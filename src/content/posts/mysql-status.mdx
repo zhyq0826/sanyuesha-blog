@@ -1,0 +1,322 @@
+---
+title: "MySQL status 详解"
+summary: "MySQL 提供了一些列的状态用来帮助我们诊断服务状况，有些状态非常有用，可以帮助我们快速定位服务异常，比如最大连接数，当前连接数等等，下表详细列举了所有的状态以及他们的详细解释，具体见官方文档："
+date: "2018-04-22"
+tags: 
+  - "status"
+group: "mysql"
+---
+
+
+MySQL 提供了一些列的状态用来帮助我们诊断服务状况，有些状态非常有用，可以帮助我们快速定位服务异常，比如最大连接数，当前连接数等等，下表详细列举了所有的状态以及他们的详细解释，具体见官方文档：
+
+https://dev.mysql.com/doc/refman/8.0/en/server-status-variables.html
+
+```mysql
+show status;
+```
+
+| Variable_name                                  | value       | scope   | explained                                                    |
+| ---------------------------------------------- | ----------- | ------- | ------------------------------------------------------------ |
+| **Aborted_clients**                            | 16031       | global  | 由于客户端没有正确关闭连接导致客户端终止而中断的连接数       |
+| **Aborted_connects**                           | 2           | global  | 试图连接到MySQL服务器而失败的连接数                          |
+| **Binlog_cache_disk_use**                      | 2           | global  | 使用临时二进制日志缓存但超过binlog_cache_size值并使用临时文件来保存事务中的语句的事务数量 |
+| **Binlog_cache_use**                           | 421723      | global  | 使用临时二进制日志缓存的事务数量                             |
+| **Binlog_stmt_cache_disk_use**                 | 0           | Both    |                                                              |
+| **Binlog_stmt_cache_use**                      | 0           |         |                                                              |
+| **Bytes_received**                             | 1248773219  | Both    | 从所有客户端接收到的字节数                                   |
+| **Bytes_sent**                                 | 3248856327  | both    | 发送给所有客户端的字节数                                     |
+| **Com_admin_commands**                         | 785         |         |                                                              |
+| **Com_assign_to_keycache**                     | 0           |         |                                                              |
+| **Com_alter_db**                               | 0           |         |                                                              |
+| **Com_alter_db_upgrade**                       | 0           |         |                                                              |
+| **Com_alter_event**                            | 0           |         |                                                              |
+| **Com_alter_function**                         | 0           |         |                                                              |
+| **Com_alter_procedure**                        | 0           |         |                                                              |
+| **Com_alter_server**                           | 0           |         |                                                              |
+| **Com_alter_table**                            | 0           |         |                                                              |
+| **Com_alter_tablespace**                       | 0           |         |                                                              |
+| **Com_analyze**                                | 0           |         |                                                              |
+| **Com_begin**                                  | 0           |         |                                                              |
+| **Com_binlog**                                 | 0           |         |                                                              |
+| **Com_call_procedure**                         | 0           |         |                                                              |
+| **Com_change_db**                              | 11          |         |                                                              |
+| **Com_change_master**                          | 0           |         |                                                              |
+| **Com_check**                                  | 0           |         |                                                              |
+| **Com_checksum**                               | 0           |         |                                                              |
+| **Com_commit**                                 | 401261      |         |                                                              |
+| **Com_create_db**                              | 0           |         |                                                              |
+| **Com_create_event**                           | 0           |         |                                                              |
+| **Com_create_function**                        | 0           |         |                                                              |
+| **Com_create_index**                           | 7           |         |                                                              |
+| **Com_create_procedure**                       | 0           |         |                                                              |
+| **Com_create_server**                          | 0           |         |                                                              |
+| **Com_create_table**                           | 0           |         |                                                              |
+| **Com_create_trigger**                         | 0           |         |                                                              |
+| **Com_create_udf**                             | 0           |         |                                                              |
+| **Com_create_user**                            | 0           |         |                                                              |
+| **Com_create_view**                            | 0           |         |                                                              |
+| **Com_dealloc_sql**                            | 0           |         |                                                              |
+| **Com_delete**                                 | 0           |         |                                                              |
+| **Com_delete_multi**                           | 0           |         |                                                              |
+| **Com_do**                                     | 0           |         |                                                              |
+| **Com_drop_db**                                | 0           |         |                                                              |
+| **Com_drop_event**                             | 0           |         |                                                              |
+| **Com_drop_function**                          | 0           |         |                                                              |
+| **Com_drop_index**                             | 0           |         |                                                              |
+| **Com_drop_procedure**                         | 0           |         |                                                              |
+| **Com_drop_server**                            | 0           |         |                                                              |
+| **Com_drop_table**                             | 0           |         |                                                              |
+| **Com_drop_trigger**                           | 0           |         |                                                              |
+| **Com_drop_user**                              | 0           |         |                                                              |
+| **Com_drop_view**                              | 0           |         |                                                              |
+| **Com_empty_query**                            | 0           |         |                                                              |
+| **Com_execute_sql**                            | 0           |         |                                                              |
+| **Com_flush**                                  | 0           |         |                                                              |
+| **Com_grant**                                  | 0           |         |                                                              |
+| **Com_ha_close**                               | 0           |         |                                                              |
+| **Com_ha_open**                                | 0           |         |                                                              |
+| **Com_ha_read**                                | 0           |         |                                                              |
+| **Com_help**                                   | 0           |         |                                                              |
+| **Com_insert**                                 | 1460169     |         |                                                              |
+| **Com_insert_select**                          | 0           |         |                                                              |
+| **Com_install_plugin**                         | 0           |         |                                                              |
+| **Com_kill**                                   | 5           |         |                                                              |
+| **Com_load**                                   | 0           |         |                                                              |
+| **Com_lock_tables**                            | 0           |         |                                                              |
+| **Com_optimize**                               | 0           |         |                                                              |
+| **Com_preload_keys**                           | 0           |         |                                                              |
+| **Com_prepare_sql**                            | 0           |         |                                                              |
+| **Com_purge**                                  | 0           |         |                                                              |
+| **Com_purge_before_date**                      | 0           |         |                                                              |
+| **Com_release_savepoint**                      | 0           |         |                                                              |
+| **Com_rename_table**                           | 0           |         |                                                              |
+| **Com_rename_user**                            | 0           |         |                                                              |
+| **Com_repair**                                 | 0           |         |                                                              |
+| **Com_replace**                                | 0           |         |                                                              |
+| **Com_replace_select**                         | 0           |         |                                                              |
+| **Com_reset**                                  | 0           |         |                                                              |
+| **Com_resignal**                               | 0           |         |                                                              |
+| **Com_revoke**                                 | 0           |         |                                                              |
+| **Com_revoke_all**                             | 0           |         |                                                              |
+| **Com_rollback**                               | 668586      |         |                                                              |
+| **Com_rollback_to_savepoint**                  | 0           |         |                                                              |
+| **Com_savepoint**                              | 0           |         |                                                              |
+| **Com_select**                                 | 807572      |         |                                                              |
+| **Com_set_option**                             | 36735       |         |                                                              |
+| **Com_signal**                                 | 0           |         |                                                              |
+| **Com_show_authors**                           | 0           |         |                                                              |
+| **Com_show_binlog_events**                     | 0           |         |                                                              |
+| **Com_show_binlogs**                           | 0           |         |                                                              |
+| **Com_show_charsets**                          | 0           |         |                                                              |
+| **Com_show_collations**                        | 1301        |         |                                                              |
+| **Com_show_contributors**                      | 0           |         |                                                              |
+| **Com_show_create_db**                         | 0           |         |                                                              |
+| **Com_show_create_event**                      | 0           |         |                                                              |
+| **Com_show_create_func**                       | 0           |         |                                                              |
+| **Com_show_create_proc**                       | 0           |         |                                                              |
+| **Com_show_create_table**                      | 22          |         |                                                              |
+| **Com_show_create_trigger**                    | 0           |         |                                                              |
+| **Com_show_databases**                         | 202         |         |                                                              |
+| **Com_show_engine_logs**                       | 0           |         |                                                              |
+| **Com_show_engine_mutex**                      | 0           |         |                                                              |
+| **Com_show_engine_status**                     | 0           |         |                                                              |
+| **Com_show_events**                            | 0           |         |                                                              |
+| **Com_show_errors**                            | 0           |         |                                                              |
+| **Com_show_fields**                            | 171         |         |                                                              |
+| **Com_show_function_status**                   | 10          |         |                                                              |
+| **Com_show_grants**                            | 0           |         |                                                              |
+| **Com_show_keys**                              | 78          |         |                                                              |
+| **Com_show_master_status**                     | 0           |         |                                                              |
+| **Com_show_open_tables**                       | 0           |         |                                                              |
+| **Com_show_plugins**                           | 0           |         |                                                              |
+| **Com_show_privileges**                        | 0           |         |                                                              |
+| **Com_show_procedure_status**                  | 10          |         |                                                              |
+| **Com_show_processlist**                       | 17          |         |                                                              |
+| **Com_show_profile**                           | 0           |         |                                                              |
+| **Com_show_profiles**                          | 0           |         |                                                              |
+| **Com_show_relaylog_events**                   | 0           |         |                                                              |
+| **Com_show_slave_hosts**                       | 0           |         |                                                              |
+| **Com_show_slave_status**                      | 0           |         |                                                              |
+| **Com_show_status**                            | 1322        |         |                                                              |
+| **Com_show_storage_engines**                   | 2           |         |                                                              |
+| **Com_show_table_status**                      | 12          |         |                                                              |
+| **Com_show_tables**                            | 41          |         |                                                              |
+| **Com_show_triggers**                          | 56          |         |                                                              |
+| **Com_show_variables**                         | 1424        |         |                                                              |
+| **Com_show_warnings**                          | 2           |         |                                                              |
+| **Com_slave_start**                            | 0           |         |                                                              |
+| **Com_slave_stop**                             | 0           |         |                                                              |
+| **Com_stmt_close**                             | 0           |         |                                                              |
+| **Com_stmt_execute**                           | 0           |         |                                                              |
+| **Com_stmt_fetch**                             | 0           |         |                                                              |
+| **Com_stmt_prepare**                           | 0           |         |                                                              |
+| **Com_stmt_reprepare**                         | 0           |         |                                                              |
+| **Com_stmt_reset**                             | 0           |         |                                                              |
+| **Com_stmt_send_long_data**                    | 0           |         |                                                              |
+| **Com_truncate**                               | 0           |         |                                                              |
+| **Com_uninstall_plugin**                       | 0           |         |                                                              |
+| **Com_unlock_tables**                          | 0           |         |                                                              |
+| **Com_update**                                 | 412234      |         |                                                              |
+| **Com_update_multi**                           | 0           |         |                                                              |
+| **Com_xa_commit**                              | 0           |         |                                                              |
+| **Com_xa_end**                                 | 0           |         |                                                              |
+| **Com_xa_prepare**                             | 0           |         |                                                              |
+| **Com_xa_recover**                             | 0           |         |                                                              |
+| **Com_xa_rollback**                            | 0           |         |                                                              |
+| **Com_xa_start**                               | 0           |         |                                                              |
+| **Compression**                                | ON          | Session | 客户端与服务器之间只否启用压缩协议                           |
+| **Connections**                                | 37499       | global  | 试图连接到(不管是否成功)MySQL服务器的连接数                  |
+| **Created_tmp_disk_tables**                    | 223         | both    | 服务器执行语句时在硬盘上自动创建的临时表的数量               |
+| **Created_tmp_files**                          | 52          | both    | mysqld已经创建的临时文件的数量                               |
+| **Created_tmp_tables**                         | 4676        | both    | 服务器执行语句时自动创建的内存中的临时表的数量，如果Created_tmp_disk_tables较大，你可能要增加tmp_table_size值使临时 表基于内存而不基于硬盘 |
+| **Delayed_errors**                             | 0           | global  | 用INSERT DELAYED写的出现错误的行数(可能为duplicate key)。    |
+| **Delayed_insert_threads**                     | 0           | global  | 使用的INSERT DELAYED处理器线程数。                           |
+| **Delayed_writes**                             | 0           | global  | 写入的INSERT DELAYED行数                                     |
+| **Flush_commands**                             | 2           | global  | 执行的FLUSH语句数                                            |
+| **Handler_commit**                             | 5291398     | both    | 内部提交语句数                                               |
+| **Handler_delete**                             | 0           | both    | 行从表中删除的次数                                           |
+| **Handler_discover**                           | 0           | both    | MySQL服务器可以问NDB CLUSTER存储引擎是否知道某一名字的表。这被称作发现。Handler_discover说明通过该方法发现的次数。 |
+| **Handler_prepare**                            | 4512578     | both    | A counter for the prepare phase of two-phase commit operations. |
+| **Handler_read_first**                         | 268341      | both    | 索引中第一条被读的次数。如果较高，它建议服务器正执行大量全索引扫描；例如，SELECT col1 FROM foo，假定col1有索引 |
+| **Handler_read_key**                           | 1286597     | both    | 根据键读一行的请求数。如果较高，说明查询和表的索引正确       |
+| **Handler_read_last**                          | 59          | both    |                                                              |
+| **Handler_read_next**                          | 35166067    | both    | 按照键顺序读下一行的请求数。如果你用范围约束或如果执行索引扫描来查询索引列，该值增加 |
+| **Handler_read_prev**                          | 1601833     | both    | 按照键顺序读前一行的请求数。该读方法主要用于优化ORDER BY ... DESC。 |
+| **Handler_read_rnd**                           | 20124       | both    | 根据固定位置读一行的请求数。如果你正执行大量查询并需要对结果进行排序该值较高。你可能使用了大量需要MySQL扫描整个表的查询或你的连接没有正确使用键 |
+| **Handler_read_rnd_next**                      | 48760470858 | both    | 在数据文件中读下一行的请求数。如果你正进行大量的表扫描，该值较高。通常说明你的表索引不正确或写入的查询没有利用索引 |
+| **Handler_rollback**                           | 308415      | both    | 内部ROLLBACK语句的数量                                       |
+| **Handler_savepoint**                          | 0           | both    | 在一个存储引擎放置一个保存点的请求数量                       |
+| **Handler_savepoint_rollback**                 | 0           | both    | 在一个存储引擎的要求回滚到一个保存点数目                     |
+| **Handler_update**                             | 412202      | both    | 在表内更新一行的请求数                                       |
+| **Handler_write**                              | 1779011     | both    | 在表内插入一行的请求数                                       |
+| **Innodb_buffer_pool_pages_data**              | 136123      | global  | 包含数据的页数(脏或干净)                                     |
+| **Innodb_buffer_pool_pages_dirty**             | 90          | global  | 当前的脏页数                                                 |
+| **Innodb_buffer_pool_pages_flushed**           | 1534140     | global  | 要求清空的缓冲池页数                                         |
+| **Innodb_buffer_pool_pages_free**              | 158551      | global  | 空页数                                                       |
+| **Innodb_buffer_pool_pages_misc**              | 1006        | global  | 忙的页数，因为它们已经被分配优先用作管理，例如行锁定或适用的哈希索引。该值还可以计算为Innodb_buffer_pool_pages_total - Innodb_buffer_pool_pages_free - Innodb_buffer_pool_pages_data。 |
+| **Innodb_buffer_pool_pages_total**             | 295680      | global  | 缓冲池总大小（页数）                                         |
+| **Innodb_buffer_pool_read_ahead_rnd**          | 0           | global  | InnoDB初始化的“随机”read-aheads数。当查询以随机顺序扫描表的一大部分时发生。 |
+| **Innodb_buffer_pool_read_ahead**              | 19531       |         |                                                              |
+| **Innodb_buffer_pool_read_ahead_evicted**      | 0           |         |                                                              |
+| **Innodb_buffer_pool_read_requests**           | 21113636240 | global  | InnoDB已经完成的逻辑读请求数                                 |
+| **Innodb_buffer_pool_reads**                   | 88282       | global  | 不能满足InnoDB必须单页读取的缓冲池中的逻辑读数量。           |
+| **Innodb_buffer_pool_wait_free**               | 0           | global  | 一般情况，通过后台向InnoDB缓冲池写。但是，如果需要读或创建页，并且没有干净的页可用，则它还需要先等待页面清空。该计数器对等待实例进行记数。如果已经适当设置缓冲池大小，该值应小 |
+| **Innodb_buffer_pool_write_requests**          | 12368792    | global  | 向InnoDB缓冲池的写数量。                                     |
+| **Innodb_data_fsyncs**                         | 74253       | global  | fsync()操作数                                                |
+| **Innodb_data_pending_fsyncs**                 | 0           | global  | 当前挂起的fsync()操作数。                                    |
+| **Innodb_data_pending_reads**                  | 0           | global  | 当前挂起的读数。                                             |
+| **Innodb_data_pending_writes**                 | 0           | global  | 当前挂起的写数。                                             |
+| **Innodb_data_read**                           | 1768591360  | global  | 至此已经读取的数据数量（字节）。                             |
+| **Innodb_data_reads**                          | 108048      | global  | 数据读总数量。                                               |
+| **Innodb_data_writes**                         | 1613970     | global  | 数据写总数量。                                               |
+| **Innodb_data_written**                        | 26343557632 | global  | 至此已经写入的数据量（字节）。                               |
+| **Innodb_dblwr_pages_written**                 | 767070      | global  | 已经执行的双写操作数量                                       |
+| **Innodb_dblwr_writes**                        | 7475        | global  | 双写操作已经写好的页数                                       |
+| **Innodb_have_atomic_builtins**                | ON          | global  |                                                              |
+| **Innodb_log_waits**                           | 0           | global  | 我们必须等待的时间，因为日志缓冲区太小，我们在继续前必须先等待对它清空 |
+| **Innodb_log_write_requests**                  | 1800108     | global  | 日志写请求数。                                               |
+| **Innodb_log_writes**                          | 830562      | global  | 向日志文件的物理写数量。                                     |
+| **Innodb_os_log_fsyncs**                       | 25144       | global  | 向日志文件完成的fsync()写数量。                              |
+| **Innodb_os_log_pending_fsyncs**               | 0           | global  | 挂起的日志文件fsync()操作数量。                              |
+| **Innodb_os_log_pending_writes**               | 0           | global  | 挂起的日志文件写操作                                         |
+| **Innodb_os_log_written**                      | 1207160320  | global  | 写入日志文件的字节数。                                       |
+| **Innodb_page_size**                           | 16384       | global  | 编译的InnoDB页大小(默认16KB)。许多值用页来记数；页的大小很容易转换为字节。 |
+| **Innodb_pages_created**                       | 28311       | global  | 创建的页数。                                                 |
+| **Innodb_pages_read**                          | 107812      | global  | 读取的页数。                                                 |
+| **Innodb_pages_written**                       | 767070      | global  | 写入的页数。                                                 |
+| **Innodb_row_lock_current_waits**              | 0           | global  | 当前等待的待锁定的行数。                                     |
+| **Innodb_row_lock_time**                       | 3132098728  | global  | 行锁定花费的总时间，单位毫秒。                               |
+| **Innodb_row_lock_time_avg**                   | 45551       | global  | 行锁定的平均时间，单位毫秒。                                 |
+| **Innodb_row_lock_time_max**                   | 51930       | global  | 行锁定的最长时间，单位毫秒。                                 |
+| **Innodb_row_lock_waits**                      | 68760       | global  | 一行锁定必须等待的时间数。                                   |
+| **Innodb_rows_deleted**                        | 0           | global  | 从InnoDB表删除的行数。                                       |
+| **Innodb_rows_inserted**                       | 5766040     | global  | 插入到InnoDB表的行数。                                       |
+| **Innodb_rows_read**                           | 25304573020 | global  | 从InnoDB表读取的行数。                                       |
+| **Innodb_rows_updated**                        | 412198      | global  | InnoDB表内更新的行数。                                       |
+| **Innodb_truncated_status_writes**             | 0           | global  |                                                              |
+| **Key_blocks_not_flushed**                     | 0           | global  | 键缓存内已经更改但还没有清空到硬盘上的键的数据块数量。       |
+| **Key_blocks_unused**                          | 26787       | global  | 键缓存内未使用的块数量。你可以使用该值来确定使用了多少键缓存 |
+| **Key_blocks_used**                            | 1583        | global  | 键缓存内使用的块数量。该值为高水平线标记，说明已经同时最多使用了多少块。 |
+| **Key_read_requests**                          | 167263      | global  | 从缓存读键的数据块的请求数。                                 |
+| **Key_reads**                                  | 143381      | global  | 从硬盘读取键的数据块的次数。如果Key_reads较大，则Key_buffer_size值可能太小。可以用Key_reads/Key_read_requests计算缓存损失率。 |
+| **Key_write_requests**                         | 49572       | global  | 将键的数据块写入缓存的请求数。                               |
+| **Key_writes**                                 | 48333       | global  | 向硬盘写入将键的数据块的物理写操作的次数。                   |
+| **Last_query_cost**                            | 0           | global  | 用查询优化器计算的最后编译的查询的总成本。用于对比同一查询的不同查询方案的成本。默认值0表示还没有编译查询。 默认值是0。Last_query_cost具有会话范围。 |
+| **Max_used_connections**                       | 2256        | global  | 服务器启动后已经同时使用的连接的最大数量。                   |
+| **Not_flushed_delayed_rows**                   | 0           | global  | 等待写入INSERT DELAY队列的行数。                             |
+| **Open_files**                                 | 52          | global  | 打开的文件的数目。                                           |
+| **Open_streams**                               | 0           | global  | 打开的流的数量(主要用于记录)。                               |
+| **Open_table_definitions**                     | 54          | global  | 缓存的.frm文件数量                                           |
+| **Open_tables**                                | 128         | global  | 当前打开的表的数量。                                         |
+| **Opened_files**                               | 96828       | global  | 文件打开的数量。不包括诸如套接字或管道其他类型的文件。 也不包括存储引擎用来做自己的内部功能的文件。 |
+| **Opened_table_definitions**                   | 94          | global  | 已经缓存的.frm文件数量                                       |
+| **Opened_tables**                              | 1525369     | global  | 已经打开的表的数量。如果Opened_tables较大，table_cache 值可能太小。 |
+| **Performance_schema_cond_classes_lost**       | 0           | global  |                                                              |
+| **Performance_schema_cond_instances_lost**     | 0           | global  |                                                              |
+| **Performance_schema_file_classes_lost**       | 0           | global  |                                                              |
+| **Performance_schema_file_handles_lost**       | 0           | global  |                                                              |
+| **Performance_schema_file_instances_lost**     | 0           | global  |                                                              |
+| **Performance_schema_locker_lost**             | 0           | global  |                                                              |
+| **Performance_schema_mutex_classes_lost**      | 0           | global  |                                                              |
+| **Performance_schema_mutex_instances_lost**    | 0           | global  |                                                              |
+| **Performance_schema_rwlock_classes_lost**     | 0           | global  |                                                              |
+| **Performance_schema_rwlock_instances_lost**   | 0           | global  |                                                              |
+| **Performance_schema_table_handles_lost**      | 0           | global  |                                                              |
+| **Performance_schema_table_instances_lost**    | 0           | global  |                                                              |
+| **Performance_schema_thread_classes_lost**     | 0           | global  |                                                              |
+| **Performance_schema_thread_instances_lost**   | 0           | global  |                                                              |
+| **Prepared_stmt_count**                        | 0           | global  | 当前的预处理语句的数量。 (最大数为系统变量: max_prepared_stmt_count) |
+| **Qcache_free_blocks**                         | 0           | global  | 查询缓存内自由内存块的数量。                                 |
+| **Qcache_free_memory**                         | 0           | global  | 用于查询缓存的自由内存的数量。                               |
+| **Qcache_hits**                                | 0           | global  | 查询缓存被访问的次数。                                       |
+| **Qcache_inserts**                             | 0           | global  | 加入到缓存的查询数量。                                       |
+| **Qcache_lowmem_prunes**                       | 0           | global  | 由于内存较少从缓存删除的查询数量。                           |
+| **Qcache_not_cached**                          | 0           | global  | 非缓存查询数(不可缓存，或由于query_cache_type设定值未缓存)。 |
+| **Qcache_queries_in_cache**                    | 0           | global  | 登记到缓存内的查询的数量。                                   |
+| **Qcache_total_blocks**                        | 0           | global  | 查询缓存内的总块数。                                         |
+| **Queries**                                    | 3812538     | global  | 服务器执行的请求个数，包含存储过程中的请求。                 |
+| **Questions**                                  | 3812538     | global  | 已经发送给服务器的查询的个数。                               |
+| **Rpl_semi_sync_master_clients**               | 0           | global  |                                                              |
+| **Rpl_semi_sync_master_net_avg_wait_time**     | 0           | global  |                                                              |
+| **Rpl_semi_sync_master_net_wait_time**         | 0           | global  |                                                              |
+| **Rpl_semi_sync_master_net_waits**             | 0           | global  |                                                              |
+| **Rpl_semi_sync_master_no_times**              | 0           | global  |                                                              |
+| **Rpl_semi_sync_master_no_tx**                 | 0           | global  |                                                              |
+| **Rpl_semi_sync_master_status**                | OFF         | global  |                                                              |
+| **Rpl_semi_sync_master_timefunc_failures**     | 0           | global  |                                                              |
+| **Rpl_semi_sync_master_tx_avg_wait_time**      | 0           | global  |                                                              |
+| **Rpl_semi_sync_master_tx_wait_time**          | 0           | global  |                                                              |
+| **Rpl_semi_sync_master_tx_waits**              | 0           | global  |                                                              |
+| **Rpl_semi_sync_master_wait_pos_backtraverse** | 0           | global  |                                                              |
+| **Rpl_semi_sync_master_wait_sessions**         | 0           | global  |                                                              |
+| **Rpl_semi_sync_master_yes_tx**                | 0           | global  |                                                              |
+| **Rpl_semi_sync_slave_status**                 | OFF         | global  |                                                              |
+| **Rpl_status**                                 | AUTH_MASTER | global  | 失败安全复制状态(还未使用)。                                 |
+| **Select_full_join**                           | 0           | global  | 没有使用索引的联接的数量。如果该值不为0,你应仔细检查表的索引 |
+| **Select_full_range_join**                     | 0           | global  | 在引用的表中使用范围搜索的联接的数量。                       |
+| **Select_range**                               | 56149       | global  | 在第一个表中使用范围的联接的数量。一般情况不是关键问题，即使该值相当大。 |
+| **Select_range_check**                         | 0           | global  | 在每一行数据后对键值进行检查的不带键值的联接的数量。如果不为0，你应仔细检查表的索引。 |
+| **Select_scan**                                | 272978      | global  | 对第一个表进行完全扫描的联接的数量。                         |
+| **Slave_heartbeat_period**                     | 0           | global  | 复制的心跳间隔                                               |
+| **Slave_open_temp_tables**                     | 0           | global  | 从服务器打开的临时表数量                                     |
+| **Slave_received_heartbeats**                  | 0           | global  | 从服务器心跳数                                               |
+| **Slave_retried_transactions**                 | 0           | global  | 本次启动以来从服务器复制线程重试次数                         |
+| **Slave_running**                              | OFF         | global  | 如果该服务器是连接到主服务器的从服务器，则该值为ON。         |
+| **Slow_launch_threads**                        | 0           | global  | 创建时间超过slow_launch_time秒的线程数。                     |
+| **Slow_queries**                               | 48490       | global  | 查询时间超过long_query_time秒的查询的个数。                  |
+| **Sort_merge_passes**                          | 56          | global  | 排序算法已经执行的合并的数量。如果这个变量值较大，应考虑增加sort_buffer_size系统变量的值。 |
+| **Sort_range**                                 | 0           | global  | 在范围内执行的排序的数量。                                   |
+| **Sort_rows**                                  | 42124       | global  | 已经排序的行数。                                             |
+| **Sort_scan**                                  | 23          | global  | 通过扫描表完成的排序的数量。                                 |
+| **Table_locks_immediate**                      | 2717991     | global  | 立即获得的表的锁的次数。                                     |
+| **Table_locks_waited**                         | 1229        | global  | 不能立即获得的表的锁的次数。如果该值较高，并且有性能问题，你应首先优化查询，然后拆分表或使用复制。 |
+| **Tc_log_max_pages_used**                      | 0           | global  |                                                              |
+| **Tc_log_page_size**                           | 0           | global  |                                                              |
+| **Tc_log_page_waits**                          | 0           | global  |                                                              |
+| **Threads_cached**                             | 39          | global  | 线程缓存内的线程的数量。                                     |
+| **Threads_connected**                          | 191         | global  | 当前打开的连接的数量。                                       |
+| **Threads_created**                            | 6070        | global  | 创建用来处理连接的线程数。如果Threads_created较大，你可能要增加thread_cache_size值。缓存访问率的计算方法Threads_created/Connections。 |
+| **Threads_running**                            | 3           | global  | 激活的（非睡眠状态）线程数。                                 |
+| **Uptime**                                     | 21457       | global  | 服务器已经运行的时间（以秒为单位）。                         |
+| **Uptime_since_flush_status**                  | 21457       | global  | 最近一次使用FLUSH STATUS 的时间（以秒为单位）。              |

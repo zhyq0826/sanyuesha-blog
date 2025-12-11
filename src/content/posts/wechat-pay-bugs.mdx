@@ -1,0 +1,25 @@
+---
+title: "Python 中如何修复微信支付漏洞"
+summary: "微信支付爆出安全漏洞，详见 http://www.techweb.com.cn/digitallife/2018-07-04/2682206.shtml，具体原理是微信支付的回调是 xml，这个漏洞的就是利用 xml 可以自定义文档结构来调用外部实体的能力来注入不安全信息，漏洞全..."
+date: "2018-07-04"
+group: "python"
+---
+
+
+微信支付爆出安全漏洞，详见 http://www.techweb.com.cn/digitallife/2018-07-04/2682206.shtml，具体原理是微信支付的回调是 xml，这个漏洞的就是利用 xml 可以自定义文档结构来调用外部实体的能力来注入不安全信息，漏洞全称是 XML External Entity Injection ，简称 XXE，微信官方已经在给出漏洞修复的具体实践，参见  https://pay.weixin.qq.com/wiki/doc/api/jsapi.php?chapter=23_5 。
+
+Python 中的 xml 解析一般使用 xml 这个标准库，Python 官方对标准库的安全使用有具体建议，参见 https://docs.python.org/2/library/xml.html#xml-vulnerabilities   :
+
+![](https://static.git-star.com/WX20180704-120452.png)
+
+上述表格详细列举了各个标准模块的安全性，请仔细检查相关支付回调业务中 xml 的使用情况。
+
+除此之外，Python 有一个非常著名的库 xmltodict ( https://github.com/martinblech/xmltodict) 用以解析 xml，这个库的最新版本修复了 XXE 见 https://github.com/martinblech/xmltodict/issues/174 ，xmltodict 依赖于 https://pypi.org/project/defusedexpat/ 这个包，默认情况下需要手动安装，所以需要在你的应用程序依赖中显式写入：
+
+```
+defusedexpat==0.4.0
+xmltodict==0.11.0
+```
+
+**一切工作做好之后，请仔细进行测试你的代码，确保它们对 xml 的解析是安全的**。
+

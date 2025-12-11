@@ -1,0 +1,301 @@
+---
+title: "Go 文件操作详解"
+summary: "Go 在 os 中提供了文件的基本操作，包括通常意义的打开、创建、读写等操作，除此以外为了追求便捷以及性能上，Go 还在 io/ioutil 以及 bufio 提供一些其他函数供开发者使用，今天在这篇文章中，我们介绍一些常用文件操作在 Go 中是如何使用的。"
+date: "2019-03-08"
+tags: 
+  - "golang"
+  - "file"
+group: "Go 标准库"
+---
+
+
+Go 在 [os](https://golang.org/pkg/os/) 中提供了文件的基本操作，包括通常意义的打开、创建、读写等操作，除此以外为了追求便捷以及性能上，Go 还在 [io/ioutil](https://golang.org/pkg/io/ioutil/) 以及 [bufio](https://golang.org/pkg/bufio/) 提供一些其他函数供开发者使用，今天在这篇文章中，我们介绍一些常用文件操作在 Go 中是如何使用的。
+
+## File 文件类型
+
+Go 在 os 中定义了 [File](https://golang.org/pkg/os/#File) 类型：
+```go
+type File struct {
+        // contains filtered or unexported fields
+}
+```
+
+打开一个文件进行读直接使用 [`os.Open` ](https://golang.org/pkg/os/#Open):
+```go
+file, err := os.Open("msg.txt")
+```
+
+`os.Open` 只接受一个文件名参数，默认打开的文件只支持读操作，文件的读写 `flag` 是以常量的形式定义的 [Constants](https://golang.org/pkg/os/#pkg-constants)   分别是：
+
+```go
+const (
+        // Exactly one of O_RDONLY, O_WRONLY, or O_RDWR must be specified.
+        O_RDONLY int = syscall.O_RDONLY // open the file read-only.
+        O_WRONLY int = syscall.O_WRONLY // open the file write-only.
+        O_RDWR   int = syscall.O_RDWR   // open the file read-write.
+        // The remaining values may be or'ed in to control behavior.
+        O_APPEND int = syscall.O_APPEND // append data to the file when writing.
+        O_CREATE int = syscall.O_CREAT  // create a new file if none exists.
+        O_EXCL   int = syscall.O_EXCL   // used with O_CREATE, file must not exist.
+        O_SYNC   int = syscall.O_SYNC   // open for synchronous I/O.
+        O_TRUNC  int = syscall.O_TRUNC  // truncate regular writable file when opened.
+)
+```
+
+以 `os.Open` 打开的文件其实就只有 `O_RDONLY` flag。
+
+### 文件读取
+
+读取文件操作时通过 `File` 的方法 [Read](https://golang.org/pkg/os/#File.Read) 进行的，这个方法接受一个参数 `buf []byte` ，默认读取的内容大小是 `len(buf)`，并且返回读取的字节 size 和错误（如果有的话），如果读取到了文件末尾，则返回 0以及`io.EOF`。
+
+```go
+if err != nil {
+    fmt.Println(err)
+}
+buf := make([]byte, 126)
+n, err := file.Read(buf)
+if err != nil {
+    fmt.Println(err)
+}
+
+fmt.Printf("%d = %q", n, buf)
+```
+
+## 按行读取
+
+在大多数文件操作中，我们可能只需要的一行行读取文件就可以满足需要，在 Go 中如何读取行呢？至少在 [os](https://golang.org/pkg/os/) 这个 package 中好像没有找到相关操作，其实 Go 已经在其他包中提供了这个操作 [bufio](https://golang.org/pkg/bufio/)。
+
+bufio 顾名思义就是带 buffer 的 IO，由于频繁读写磁盘会有相当的性能开销，因为一次磁盘的读写就是一次系统的调用，所以 Go 提供了一个 buffer 来缓冲读写的数据，比如多次写磁盘 bufio 就会把数据先缓冲起来，待 buffer 装满之后一次性写入，又比如多次读数据，bufio 会预先按照 buffer 的大小（一般是磁盘 block size 的整数倍）尽量多的读取数据，也就是采用预读的技术以提高读的性能。
+
+bufio 提供了 [Reader](https://golang.org/pkg/bufio/#Reader) 、[Writer](https://golang.org/pkg/bufio/#Writer)、[Scanner](https://golang.org/pkg/bufio/#Scanner) 来进行文件的读写，其中 Reader 和 Scanner 都支持按行读取文件。
+
+### Reader 读取行
+
+使用 Reader 的[ReadLine](https://golang.org/pkg/bufio/#Reader.ReadLine) 按行读，其中 file 表示我们刚才打开的文件：
+
+```go
+reader := bufio.NewReader(file)
+buf, _, err = reader.ReadLine()
+```
+
+ReadLine 读取文件的一行，默认是以 `\r\n` 或者 `\n` 分割，并且不包括分割符，如果行太长超过了内部 buffer 的大小，第二个返回值 isPrefix 就会被设置，直到 isPrefix 为 false 为止，表示一行读取完成。
+
+除了 ReadLine 之外，[ReadBytes](https://golang.org/pkg/bufio/#Reader.ReadBytes) 也支持按行读取，区别是 ReadBytes 需要显示的指定分隔符，而且其返回的数据中包括分割符：
+
+```go
+buf, err = reader.ReadBytes('\n')
+fmt.Printf("%d = %q", len(buf), buf) //输出包含 \n
+
+```
+
+除了对行的读取，bufio.Reader 还包含 [ReadRune](https://golang.org/pkg/bufio/#Reader.ReadRune)、ReadSlice、ReadString 等读取内容的函数。
+
+###  Scanner 读取行
+
+Scanner 其实类似于 Reader，但是 scanner 有更强的便捷性，scanner 的主要目的就是利用各种分隔符来读取行，他提供了 SplitFunc 来自定义对文件内容的分割:
+
+```go
+scanner := bufio.NewScanner(file)
+for scanner.Scan() {
+    fmt.Println(scanner.Text())
+}
+```
+
+上面的代码会把文件 file 的内容按行输出，为什么恰好会按行输出？主要原因是 scanner 提供的默认的 [SplitFunc](https://golang.org/pkg/bufio/#Scanner.Split) 是 [ScanLines](https://golang.org/pkg/bufio/#ScanLines)，也就是 scanner.Text() 方法使用就是这个 splitfunc。
+
+接下类我们使用一个自定义的 SplitFunc 来实现从文本中找到可以转换成数字的字符。
+
+```go
+r := strings.NewReader("123 456 k789 123")
+split := func(data []byte, atEOF bool) (advance int, token []byte, err error) {
+    // scanWords 按照 space 进行分割
+    advance, token, err = bufio.ScanWords(data, atEOF)
+    fmt.Printf("data=%q\n", data)
+    fmt.Printf("advance=%d\n", advance)
+    fmt.Printf("token=%q\n", token)
+    fmt.Printf("atEOF=%t\n", atEOF)
+    if strings.Trim(string(token), " ") != "" {
+        _, err = strconv.ParseInt(string(token), 10, 32)
+    }
+
+    return
+}
+
+scanner := bufio.NewScanner(r)
+scanner.Split(split)
+
+for scanner.Scan() {
+    fmt.Println("scan text=", scanner.Text())
+    fmt.Println("=======")
+}
+
+if err := scanner.Err(); err != nil {
+    fmt.Printf("%s", err)
+}
+```
+
+上面的例子中我们定义了一个 SplitFunc，正如 SplitFunc 签名一样，他接受三个参数，分别是待处理的数据 data，是否还有更多的数据要处理的标识 atEOF，然后返回的是当前已经处理的数据的字节长度 advance，已经处理的字节数组 token，以及一个可选的错误 err。
+
+**advance 的计算是从当前剩下要处理的数据首位 0 的位置开始一直到下一个分割符，并且包含分隔符占用的字节**，可以对照看以下输出就能明白：
+
+```
+data="123 456 k789 123"
+advance=4         //从 1 开始直到下一个空格
+token="123"
+atEOF=false
+scan text= 123
+=======
+data="456 k789 123"
+advance=4
+token="456"
+atEOF=false
+scan text= 456
+=======
+data="k789 123"   
+advance=5   //从 k 开始直到下一个空格
+token="k789"
+atEOF=false
+strconv.ParseInt: parsing "k789": invalid syntax%
+```
+
+而且需要注意的是，scanner 在遇到一个错误之后就停止 Scan 了，上面的 ParseInt 发生错误之后之后的 Scan 也不会输出。
+
+## File 类型和 bufio
+
+![](https://static.git-star.com/go-file.jpg?a)
+
+如图 File 是实现了`io.Reader` 和 `io.Writer` 两个 interface 的 type，而 bufio 提供的几种操作都以这两个 interface 为基础实现文件的读写，也就是说只要 type 实现了 io.Reader 就可以使用 bufio 读取，实现了 io.Writer 就可以使用 bufio 输出。
+
+```go
+str := strings.NewReader(strings.Repeat("ab", 10))
+buf := make([]byte, 2)
+reader := bufio.NewReader(str)
+```
+
+如上代码 str 是一个 string 的 Reader，然后就可以使用 bufio进行高效读取。
+
+## 文件的输出
+
+文件的写入类似文件的读取，Go 提供了 [Create](https://golang.org/pkg/os/#Create)、 [OpenFile](https://golang.org/pkg/os/#OpenFile) 打开文件进行写入或追加。
+
+Create 会打开一个文件，默认的模式是 O_RDWR 即读和写，如果原来的文件已经存在则清空，如果不存在则新创建一个。
+
+```go
+file, err := os.Create("new.txt")
+if err != nil {
+    fmt.Println(err)
+}
+
+defer file.Close()
+
+file.WriteString(time.Now().Local().String())
+```
+
+OpenFile 提供了更灵活的方式打开一个文件，他接受三个参数，依次是文件名，打开文件的 flag，以及文件权限。
+
+```go
+file, err := os.OpenFile("new.txt", os.O_RDWR|os.O_CREATE, 0775)
+if err != nil {
+    fmt.Println(err)
+}
+
+defer file.Close()
+file.WriteString(time.Now().Local().String())
+```
+
+除了 WriteString，file 类型还提供了 [Write](https://golang.org/pkg/os/#File.Write) 方法，区别是 Write 接受的是 []byte 。
+
+### 使用 bufio.Writer 进行文件输出
+
+上面我们提到过 bufio 提供了 Writer 来进行高效的输出，如何使用呢？
+
+Writer 实际上是一个内部包含 buffer 的特殊 struct，其结构大致如下：
+
+```go
+type Writer struct {
+    err error
+    buf []byte
+    n   int
+    wr  io.Writer
+}
+```
+
+buf 这个 field 就是缓冲输出内容的，当满足指定 size 之后，Writer 才会把 buf 中的内容通过 wr 写到输出对象。
+
+```go
+wr := bufio.NewWriterSize(os.Stdout, 38)
+	count := 0
+	for {
+		wr.WriteString(time.Now().Format("2006-01-02 15:04:05"))
+		time.Sleep(time.Second * 1)
+		fmt.Println("\ncount ", count)
+		count++
+		if count > 10 {
+			break
+		}
+
+	}
+wr.Flush()
+
+```
+
+上面的代码会在 buf 的 size 满足 38 之后输出到标准输出，可以运行代码查看输出时间隔 2 秒产生的:
+
+```shell
+count  0
+count  1
+2019-03-10 14:01:022019-03-10 14:01:03
+count  2
+count  3
+2019-03-10 14:01:042019-03-10 14:01:05
+count  4
+count  5
+2019-03-10 14:01:062019-03-10 14:01:07
+count  6
+count  7
+2019-03-10 14:01:082019-03-10 14:01:09
+count  8
+count  9
+2019-03-10 14:01:102019-03-10 14:01:11
+count  10
+2019-03-10 14:01:12   
+```
+
+默认情况下 bufio.Writer 指定的 size 大小是 [defaultBufSize](https://golang.org/src/bufio/bufio.go?s=14124:14193#L17) = 4096，像上面的代码一样可以通过 NewWriterSize 来改变这个大小。
+
+需要注意的是，Writer 在遇到错误之后不会接着执行后面的输出，看以下代码：
+
+```go
+type Writer int
+
+func (*Writer) Write(p []byte) (n int, err error) {
+	fmt.Printf("Write: %q\n", p)
+	return 0, errors.New("IO Error!")
+}
+
+func main() {
+	wr := bufio.NewWriterSize(new(Writer), 3)
+	wr.Write([]byte{'a'})
+	wr.Write([]byte{'b'})
+	wr.Write([]byte{'c'})
+	wr.Write([]byte{'d'})
+	err := wr.Flush()
+	fmt.Println(err)
+}
+
+```
+
+输出：
+
+```
+Write: "abc"
+IO Error!
+```
+
+最后一个字符 d 没有输出
+
+## ioutil 包的文件读写
+
+除了上面提到的对文件的读写操作，[io/ioutil](https://golang.org/pkg/io/ioutil/) 中提供了几个便捷的函数来读写文件，分别是：
+
+[WriteFile](https://golang.org/pkg/io/ioutil/#WriteFile) 、[ReadFile](https://golang.org/pkg/io/ioutil/#ReadFile) ，他们可以直接对文件进行写入和读取，省去了一个打开的过程。

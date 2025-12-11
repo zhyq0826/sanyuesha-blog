@@ -1,0 +1,173 @@
+---
+title: "理解 Go 中的 Slice"
+summary: "## 什么是 slice"
+date: "2018-07-31"
+tags: 
+  - "slice"
+group: "golang"
+---
+
+
+## 什么是 slice
+
+Slice 是一种变长的序列，其所有的元素具有相同的数据类型，表达式为 `[]T` ，看上去很像没有 size 的数组。
+
+Slice 是一种和数组相关联的轻量的数据结构，其包含三部分：一个指向底层数组的指针，一个 length，一个 capacity。指针指向的是底层数组中 slice 的第一个元素，**length 是 slice 拥有元素的个数，capacity 是底层数组中 slice 的第一个元素到数组末尾的长度**。
+
+![](https://static.git-star.com/go-slices-usage-and-internals_slice-struct.png)
+
+**Slice 的结构会导致多个 slice 实际引用的是同一个数组**。Slice 的这种结构决定了如果一个函数的参数是 slice，那么可以在函数的内部对 slice 进行修改，所以 slice 同 map、chan 一样可以被调用者修改。
+
+注意，如果一个函数的参数是 slice，在函数内部要避免对 slice 进行修改操作。
+
+## slice 初始化
+
+声明一个 slice 形式如：
+
+``` go
+var s []int
+```
+
+一个未被初始化的 slice 其值是 nil，此时 slice 的 length 和 capacity 都是 0。初始化 slice 有两种方式：
+
+**第一种是 literal**
+
+```go
+var s = []int{0, 1, 2, 3}
+```
+
+这种形式的初始化还可以指定每个元素的 index:
+
+```
+var s = []int{0:0, 1:1, 2:2}
+```
+
+也可以夸越多个元素指定 index：
+
+```go
+var s = []int{0:0, 3:3}
+fmt.Println(len(s)) // 4
+```
+
+**第二种是 make**
+
+```go
+s := make([]int, 3, 6)
+```
+
+使用 make 初始化可以指定 slice 的 length 和 capacity。
+
+## slice 的切片操作
+
+Slice 支持使用切片操作，我们声明一个 months 的 array：
+
+```go
+months := [...]string{ 1: "January", 2: "February", 3: "Marcy", 4: "April", 5: "May", 6: "June", 7: "July", 8: "August", 9: "September", 10: "October", 11: "November", 12: "December"}
+```
+
+切片操作 s[i:j]，0<=i<=j<=cap(s)，创建了一个新的 slice，其 length 是 j-i，容量是从 i 开始到底层数组末尾的所有元素，i 和 j 可以省略一个或都省略，因而 s[:]、s[:j]、s[i:] 都是合法的。省略 i 则表示从 0 开始，省略 j 则表示底层数组的末尾。
+
+![](https://static.git-star.com/WX20180801-082445@2x_meitu_1.jpg)
+
+
+
+```go
+Q2 := months[4:7]
+fmt.Println(Q2) //[April May June]
+fmt.Println("Q2 len", len(Q2)) //Q2 len 3
+fmt.Println("Q2 cap", cap(Q2)) //Q2 cap 9
+
+summer := months[6:9]
+fmt.Println(summer) //[June July August]
+fmt.Println("summer len", len(summer))//summer len 3
+fmt.Println("summer cap", cap(summer))// summer cap 7
+```
+
+从上面的例子不难看出，capacity 是 slice 中的第一个元素到底层数组的末尾的长度，length 是 slice 的实际长度。
+
+## slice 切片操作边界范围
+
+slice 的切片是有明确边界范围的。
+
+**在 capacity 范围内扩充 slice**
+
+如果 slice 的 j 不超过 capacity，调整 j 的大小可以扩充 slice：
+
+```go
+afterSummer := summer[:4]
+fmt.Println(afterSummer) //[June July August September]
+fmt.Println("afterSummer len", len(afterSummer)) //afterSummer len 4
+fmt.Println("afterSummer cap", cap(afterSummer))//afterSummer cap 7
+```
+
+**超过 capacity 报 panic**
+
+如果 slice 的 j 超过 capacity 会报 panic:
+
+```go
+afterSummer = summer[:8] //panic: runtime error: slice bounds out of range
+fmt.Println(afterSummer)
+```
+
+summer 的 capacity 是 7，则 j 最大到 7，超过 capacity 则出错。
+
+**超过 length 报 panic**
+
+如果 slice 的 i 超过 length 会报 panic:
+
+```go
+afterSummer = summer[4:] //panic: runtime error: slice bounds out of range
+```
+
+summer 的 length 是 3，则 i 最大到 3，超过 length 则出错
+
+## slice 的比较操作
+
+两个 slice 是不能相互比较的，slice 唯一能够比较的操作时 nil
+```go
+if s == nil {
+
+}
+```
+但是这个操作很少用到，判断一个没有任何元素的 slice 可以用 len(s) == 0，即使 s 是一个未初始化的 slice，值为 nil 也不影响。
+
+## append 操作
+
+内建的 append 函数把一个元素添加到 slice 的末尾，由于 slice 底层是一个数组，有可能发生数组的长度不够使用的情况，append 会在此时创建一个新的数组并且 double 数组的长度，把新元素添加之后返回新的 slice，下面的代码返回结果可以证明此观点:
+
+```go
+func main() {
+    var y []int
+    for i := 0; i < 10; i++ {
+        y = append(y, i)
+        fmt.Printf("%d cap=%d\t%v\n", i, cap(y), y)
+    }
+}
+
+//out
+0 cap=1 [0]
+1 cap=2 [0 1]
+2 cap=4 [0 1 2]
+3 cap=4 [0 1 2 3]
+4 cap=8 [0 1 2 3 4]
+5 cap=8 [0 1 2 3 4 5]
+6 cap=8 [0 1 2 3 4 5 6]
+7 cap=8 [0 1 2 3 4 5 6 7]
+8 cap=16        [0 1 2 3 4 5 6 7 8]
+9 cap=16        [0 1 2 3 4 5 6 7 8 9]
+```
+
+实际中 go slice 的增长策略会比这个要更复杂。
+
+由于 append 会自动创建新的 slice，所以如果 slice 是 nil 也支持使用 append 操作：
+
+```go
+var x []int
+x = append(x, 10)
+```
+
+
+## 参考资料
+
+- The Go Programming Language
+- https://blog.golang.org/go-slices-usage-and-internals

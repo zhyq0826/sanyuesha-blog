@@ -1,0 +1,176 @@
+---
+title: "写出 Go 风格的代码"
+summary: "此文是 Golang wiki 上 https://github.com/golang/go/wiki/CodeReviewComments 的翻译与理解。"
+date: "2019-07-25"
+tags: 
+  - "style"
+group: "golang"
+---
+
+
+
+此文是 Golang wiki 上 https://github.com/golang/go/wiki/CodeReviewComments 的翻译与理解。
+
+
+## Gofmt
+
+优先使用工具统一代码风格，避免无意义的争论，使用 gofmt 或者 goimports。
+
+
+## 注释语句 Comment Sentences
+
+
+注释以要注释的对象开头，尽量使用完整的句子进行注释，哪怕看上去有点冗余，
+
+
+```golang
+// Request represents a request to run a command.
+type Request struct { ...
+
+// Encode writes the JSON encoding of req to w.
+func Encode(w io.Writer, req *Request) { ...
+
+```
+
+
+## 上下文 Contexts
+
+对于来自 RPC 或 HTTP 调用的请求，显示把 context 作为函数的第一个参数。
+
+```golang
+func F(ctx context.Context, /* other arguments */) {}
+```
+
+如果函数不是 request specific 的，可以使用 `context.Background` 代替。
+
+不要把 context 作为 context 的 memeber，而是是吧 context 作为 struct method 的第一个参数，有个例外是如果 method 必须
+要满足某个 interface 或者某个第三方 pkg 的签名。
+
+在函数签名中不要使用自定义 context 以及 context 提供之外的 interface。
+
+如果有应用程序数据要传递，优先考虑作为参数传递，其次是作为 receiver 或全局变量，最后再考虑是不是可以作为 context value 传递。
+
+context 是不可变的，所以可以把 context 在多次调用的上下文中分享同一个 context，以共享 dealine、cancellation、credentials 等。
+
+
+## 拷贝 Copy 
+
+如果要 copy 从一个 package 中的某个 struct 时，一定要小心，尤其拷贝一个带 slice 的 struct，有可能会导致两个 struct 引用同一个底层
+array。
+
+一般来说不要 copy T 的 method receiver 是 `*T` 的 struct。
+
+## 声明空的 slice Declaring Empty Slices
+
+优先使用 `var t []string`，而不是 `t := []string{}`，虽然二者功能上是一样的，len 都是 zero，但是前者是 nil，后者不是 nil。前者 json 
+之后是 null，后者是 []，但是前者依然是推荐写法。
+
+如果要设计 interface 避免区分 slice 的 nil 或者 not nil 以及 zero length。
+
+
+## 文档注释 Doc Comments
+
+所有顶层可导出对象都应该有文档注释，不可导出对象也应该如此，详见 https://golang.org/doc/effective_go.html#commentary 。
+
+## 不要 panic Don’t Panic
+
+使用 error 和多个返回值解决 error 的问题，不要用 panic，除非你显示知道自己这么做的原因。
+
+
+## 例子 Examples
+
+任何时候写一个 pkg 都要附带可以执行的例子。
+
+
+## Goroutine 的生命周期 Goroutine Life Time
+
+每开启一个 Goroutine，一定要明确 Goroutine 何时或者是否要结束，根本原因是 Goroutine leak。
+
+
+>Goroutines can leak by blocking on channel sends or receives: the garbage collector will not terminate a goroutine even if the channels it is blocked on are unreachable.
+Even when goroutines do not leak, leaving them in-flight when they are no longer needed can cause other subtle and hard-to-diagnose problems. Sends on closed channels panic. Modifying still-in-use inputs "after the result isn't needed" can still lead to data races. And leaving goroutines in-flight for arbitrarily long can lead to unpredictable memory usage.
+Try to keep concurrent code simple enough that goroutine lifetimes are obvious. If that just isn't feasible, document when and why the goroutines exit
+
+
+## 错误处理 Handle Errors
+
+见 https://golang.org/doc/effective_go.html#errors ，不要使用 `_` 丢弃错误，如果一个函数返回错误，校验错误确保函数的正确执行，处理错误或者返回它，哪怕是 panic 。
+
+## 导入 Imports
+
+除非是为了避免名称冲突，否则不要重命名导入包，优先重命名本地或者 project-specific 的包。
+
+包以 blank line 的形式分组展示，标准包在顶层。
+
+使用 goimport 工具。
+
+
+## 导入空 ImportBlank
+
+
+仅仅在入口函数或者测试时执行 `_ pkg` 形式的导入。
+
+
+
+## 错误的缩进 Indent Error Flow
+
+
+```golang
+
+// 推荐写法
+if err != nil {
+	// error handling
+} else {
+	// normal code
+}
+
+
+// 不推荐写法
+if err != nil {
+	// error handling
+	return // or continue, etc.
+}
+
+
+// 不推荐写法
+if x, err := f(); err != nil {
+	// error handling
+	return
+} else {
+	// use x
+}
+
+// 推荐写法
+x, err := f()
+if err != nil {
+	// error handling
+	return
+}
+// use x
+```
+
+
+## 命名返回参数 Named Result Parameters
+
+
+如果一个函数返回多个类型相同的结果或者返回的结果上下文语义不明确，可以使用命名参数：
+```golang
+
+// 不推荐写法
+func (f *Foo) Location() (float64, float64, error)
+
+// 推荐写法
+func (f *Foo) Location() (lat, long float64, err error)
+
+```
+
+
+## 包名 package name
+
+http://blog.golang.org/package-names
+
+
+## 传值 Pass Values
+
+
+传值而不是指针，大的 struct 以及可能会增长的 struct 除外。

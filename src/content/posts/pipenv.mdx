@@ -1,0 +1,99 @@
+---
+title: "使用 pipenv 和 autoenv 构造一键 Python Project 环境"
+summary: "虽然 Python 的 virtualenv 可以为 Python 的工程提供很好的环境支持免去了很多环境依赖上的麻烦，但是若是项目太多，还是要构建很多虚拟环境，而且每次进不同的项目都需要手动切换非常麻烦，autoenv 和 pipenv可以为 Python 的工程提供 virt..."
+date: "2017-10-10"
+tags: 
+  - "pipenv"
+group: "python"
+---
+
+
+虽然 Python 的 virtualenv 可以为 Python 的工程提供很好的环境支持免去了很多环境依赖上的麻烦，但是若是项目太多，还是要构建很多虚拟环境，而且每次进不同的项目都需要手动切换非常麻烦，[autoenv](https://pypi.org/project/autoenv/) 和 [pipenv](https://pypi.org/project/pipenv/)可以为 Python 的工程提供 virtualenv **自动构建、自动激活以及灵活的依赖管理**。
+
+{/* more */}
+
+
+# 使用 autoenv 自动激活 env 环境
+
+autoenv 可以在进入项目之后自动检测项目目录的 .env 文件并激活项目所需的 virtualenv 环境，这样能够保证每次切换项目都能自动进入项目自身依赖的虚拟环境。
+
+```bash
+brew install autoenv
+echo "source $(brew --prefix autoenv)/activate.sh" >> ~/.bash_profile
+```
+
+# 使用 pipenv 自动构建环境和依赖
+
+pipenv 是结合了 virtualenv 和 pip 的构建工具，这样就省去了分开使用二者的麻烦，而且 pipenv 借鉴了开源社区众多包管理工具的优秀特性，真可谓集中家之长来为 Python 提供了一个优秀的包管理工具，其作者就是大名鼎鼎 requests 的作者 [kennethreitz](https://github.com/kennethreitz)。
+
+确保系统上已经有了 Python 和 pip :
+```bash
+$ python --version
+Python 2.7.12
+
+$ pip --version
+pip 9.0.1 from /Library/Python/2.7/site-packages (python 2.7)
+```
+
+安装 pipenv :
+```bash
+$ pip install --user pipenv
+```
+
+`--user` 选项将 pipenv 安装在系统的用户目录，避免使用 sudo 权限以及破坏系统原有的依赖，在 Linux 和 macOS 中可以使用 `python -m site --user-base` 查看 pip 用户目录在什么地方：
+```bash
+$ python -m site --user-base
+/Users/zhyq0826/Library/Python/2.7
+```
+
+一般情况下 Python 的用户 bin 目录并没有加入的 shell bin 中，找到该目录并加入到用户 path 中：
+```bash
+export PATH=$PATH:/Users/zhyq0826/Library/Python/2.7/bin
+```
+
+pipenv 结合了 virtualenv 和 pip，借助 pipenv 可以一键创建 virtualenv 环境，也就是说每个项目都可以拥有自己单独的虚拟环境和依赖安装了。
+
+
+```bash
+$ cd myproject
+$ pipenv install 
+```
+如果项目中已经有了 `requirements.txt` pipenv 会自动进行转换生成 `Pipfile` 文件，该文件是 pipenv 用来跟踪依赖包信息的文件。
+
+如果出现：
+```bash
+Warning: Your dependencies could not be resolved. You likely have a mismatch in your sub-dependencies.
+  You can use $ pipenv install --skip-lock to bypass this mechanism, then run $ pipenv graph to inspect the situation.
+```
+
+说明在安装过程中有错误，可以按照提示进行操作：
+```bash
+pipenv install --skip-lock
+```
+
+在我的 Pro turbo-markdown 目录上安装的提示信息：
+```bash
+Creating a virtualenv for this project…
+⠋Using real prefix '/System/Library/Frameworks/Python.framework/Versions/2.7'
+New python executable in /Users/zhyq0826/.local/share/virtualenvs/turbo-markdown-BmR5qYdY/bin/python
+Installing setuptools, pip, wheel...done.
+
+Virtualenv location: /Users/zhyq0826/.local/share/virtualenvs/turbo-markdown-BmR5qYdY
+Creating a Pipfile for this project…
+Pipfile.lock not found, creating…
+Locking [dev-packages] dependencies…
+Locking [packages] dependencies…
+Updated Pipfile.lock (c23e27)!
+Installing dependencies from Pipfile.lock (c23e27)…
+  🐍   ▉▉▉▉▉▉▉▉▉▉▉▉▉▉▉▉▉▉▉▉▉▉▉▉▉▉▉▉▉▉▉▉ 0/0 — 00:00:00
+To activate this project's virtualenv, run the following:
+ $ pipenv shell
+```
+把输出的 env 的目录送到 .env 文件，下次 cd 进入项目目录之后会自动激活：
+```bash
+echo "source /Users/zhyq0826/.local/share/virtualenvs/turbo-markdown-BmR5qYdY/bin/activate" >>.env
+```
+
+# 小结
+
+好工具的使用要趁早，早用早解放，省时又省力😁。

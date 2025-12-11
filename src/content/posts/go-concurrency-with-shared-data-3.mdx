@@ -1,0 +1,206 @@
+---
+title: "并发 Go 程序中的共享变量 (三)：读写锁"
+summary: "> 本系列是阅读 “The Go Programming Language” 理解和记录。"
+date: "2018-09-11"
+tags: 
+  - "锁"
+  - "concurrency"
+group: "Go 读书笔记"
+---
+
+
+> 本系列是阅读 “The Go Programming Language” 理解和记录。
+
+
+在上篇中 [go-concurrency-with-shared-data-2](/blog/go-concurrency-with-shared-data-2) 我们的获取 balance 的方法也用了锁：
+
+```go
+func Balance() int {
+    mu.Lock()
+    defer mu.Unlock()
+    return balance
+}
+
+```
+
+这样带来什么问题呢？假设有一个场景，用户需要频繁的查询 balance，这会导致 lock 被频繁的调用，不但 `Balance` 函数彼此之间需要等待对方锁的释放，同时也会影响到 `Widthdraw` 和 `Deposit` 函数的调用：
+
+```go
+package main
+
+import (
+    "fmt"
+    "sync"
+    "time"
+)
+
+var (
+    mu      sync.Mutex
+    balance int
+)
+
+func Balance() int {
+    fmt.Println("Balance wait for another goroutine release lock")
+    mu.Lock()
+    fmt.Println("Balance acquired lock")
+    defer mu.Unlock()
+    return balance
+}
+
+func Balance2() int {
+    mu.Lock()
+    fmt.Println("Balance2 acquired lock")
+    defer mu.Unlock()
+    time.Sleep(10 * time.Second)
+    fmt.Println("Balance2 release lock")
+    return balance
+}
+
+func Deposit(amount int) {
+    mu.Lock()
+    deposit(amount)
+    mu.Unlock()
+}
+func Withdraw(amount int) bool {
+    mu.Lock()
+    defer mu.Unlock()
+    deposit(-amount)
+    if balance < 0 {
+        deposit(amount)
+        return false // insufficient funds
+    }
+    return true
+}
+func deposit(amount int) {
+    balance = balance + amount
+}
+
+func main() {
+    balance = 100
+    wait := make(chan int)
+    go func() {
+        fmt.Println("Balance2 == >", Balance2())
+        wait <- 1
+    }()
+    time.Sleep(2 * time.Second)  // 此处 sleep 操作是为了 Balance2 优先获得执行
+    fmt.Println("Balance ==>", Balance())
+    <-wait
+}
+
+```
+
+为了演示方便，代码中构造了两个读取 balance 的函数 `Balance` 和 `Balance2`，假设在 `Balance2` 由于某种原因读取 balance 的操作需要等待一段时间，这个时候如果 `Balance2` 不结束 `Balance` 就无法执行，输出结果如下：
+```shell
+Balance2 acquired lock
+Balance wait for another goroutine release lock
+Balance2 release lock
+Balance2 == > 100
+Balance acquired lock
+Balance ==> 100
+```
+由输出结果不难看出（程序中的 IO 操作能够引起 goroutine 执行的切换，所以需要小心对待 print 才能正确演示我们要的结果），Balance 必须要等到 Balance2 释放锁之后才能获取 balance，程序的整个执行过程中并没有修改 balance 的操作，也就是如果仅仅只有读取 balance 的操作，它们的并发执行是安全的，但是由于 `sync.Mutex` 的使用，这将导致这种并发安全的操作也会带来不必要的性能损耗：**锁的频繁获取和释放**。这里如果有一种特殊的锁能够允许对 balance 的读取操作可以并行执行，但是一旦遇到修改操作就必须要等待锁的获取才能继续读取，这部分的性能损耗就可以弥补。幸运地是，Go 提供了这种锁，称之为 **multiple readers，single writer** 锁：`sync.RWMutex`。
+
+我们对上面的代码进行小小的修改，替换获取锁和释放锁的代码：
+
+```go
+
+var (
+    mu      sync.RWMutex
+    balance int
+)
+
+func Balance() int {
+    fmt.Println("Balance wait for another goroutine release lock")
+    mu.RLock() // 修改处
+    fmt.Println("Balance acquired lock")
+    defer mu.RUnlock()  // 修改处
+    return balance
+}
+
+func Balance2() int {
+    mu.RLock()   // 修改处
+    fmt.Println("Balance2 acquired lock")
+    defer mu.RUnlock()  // 修改处
+    time.Sleep(10 * time.Second)
+    fmt.Println("Balance2 release lock")
+    return balance
+}
+
+```
+
+执行输出如下：
+
+```shell
+Balance2 acquired lock
+Balance wait for another goroutine release lock
+Balance acquired lock
+Balance ==> 100
+Balance2 release lock
+Balance2 == > 100
+```
+
+可以看到即使 Balance2 没有释放锁，Balance 依然可以获得锁，程序整体的执行效率提升了，尤其是读越多，效果越显著。
+
+使用了 RLock 的 Balance 依然在遇到 Widthdraw 等已经通过 Lock 获取锁的 函数执行时必须要继续等待：
+```go
+package main
+
+import (
+    "fmt"
+    "sync"
+    "time"
+)
+
+var (
+    mu      sync.RWMutex
+    balance int
+)
+
+func Balance() int {
+    fmt.Println("Balance wait for another goroutine release lock")
+    mu.RLock()
+    fmt.Println("Balance acquired lock")
+    defer mu.RUnlock()
+    return balance
+}
+
+func Deposit(amount int) {
+    mu.Lock()
+    fmt.Println("Deposit acquired lock")
+    defer mu.Unlock()
+    time.Sleep(5 * time.Second)
+    deposit(amount)
+}
+
+func Withdraw(amount int) bool {
+    mu.Lock()
+    defer mu.Unlock()
+    deposit(-amount)
+    if balance < 0 {
+        deposit(amount)
+        return false // insufficient funds
+    }
+    return true
+}
+
+func deposit(amount int) {
+    balance = balance + amount
+}
+
+func main() {
+    balance = 100
+    wait := make(chan int)
+    go func() {
+        Deposit(100)
+        wait <- 1
+    }()
+    time.Sleep(1 * time.Second)
+    fmt.Println("Balance ==>", Balance())
+    <-wait
+}
+
+```
+
+即使使用 RLock，Balance 函数还是需要等待 Deposit 释放锁，说明我们的目的达到了：**多读并行，一写排它**。
+
+`sync.RWMutex` 提供的 RLock 只能用于 critical section 没有对 shared variable 进行写的情况，但是记住要始终谨慎对待，因为有很多隐式的对 shared variable 的修改不是很容易察觉，比如其它调用函数的读取计数器等。

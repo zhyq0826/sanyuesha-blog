@@ -1,0 +1,157 @@
+---
+title: "Python 中的 pack 和 unpack"
+summary: "## 为什么要进行 pack 操作和 unpack 操作"
+date: "2018-03-10"
+tags: 
+  - "network"
+group: "python"
+---
+
+
+## 为什么要进行 pack 操作和 unpack 操作
+
+不同类型的语言支持不同的数据类型，比如 Go 有 int32、int64、uint32、uint64 等不同的数据类型，这些类型占用的字节大小不同，而同样的数据类型在其他语言中比如 Python 中，又是完全不同的处理方式，比如 Python 的 int 既可以是有符号的，也可以是无符号的，这样一来 Python 和 Go 在处理同样大小的数字时存储方式就有了差异。
+
+除了语言之间的差别，不同的计算机硬件存储数据的方式也有很大的差异，有的 32 bit 是一个 word，有的 64 bit 是一个 word，而且他们存储数据的方式或多或少都有些差异。
+
+当这些不同的语言以及不同的机器之间进行数据交换，比如通过 network 进行数据交换，他们需要对彼此发送和接受的字节流数据进行 pack 和 unpack 操作，以便数据可以正确的解析和存储。
+
+也就是说 pack 和 unpack 是用来在计算机之间以及不同语言之间进行网络交流时的对数据数据格式翻译和转换操作的。
+
+## 计算机如何存储整型
+
+可以把计算机的内存看做是一个很大的字节数组，一个字节包含 8 bit 信息可以表示 0-255 的无符号整型，以及 -128--127 的有符号整型。当存储一个大于 8 bit 的值到内存时，这个值常常会被切分成多个 8 bit 的 segment 存储在一个连续的内存空间，一个 segment 一个字节。有些处理器会把高位存储在内存这个字节数组的头部，把低位存储在尾部，这种处理方式叫 **big-endian**，有些处理器则相反，低位存储在头部，高位存储在尾部，称之为 **little-endian**。
+
+假设一个寄存器想要存储 0x12345678 到内存中，big-endian 和 little-endian 分别存储到内存 1000 的地址表示如下
+
+| address | big-endian | little-endian |
+| ------- | ---------- | ------------- |
+| 1000    | 0x12       | 0x78          |
+| 1001    | 0x34       | 0x56          |
+| 1002    | 0x56       | 0x34          |
+| 1003    | 0x78       | 0x12          |
+
+Python 中字节在机器中存储的字节顺序用字母表示如下：
+
+| Character | Byte order             | Size     | Alignment |
+| --------- | ---------------------- | -------- | --------- |
+| `@`       | native                 | native   | native    |
+| `=`       | native                 | standard | none      |
+| `<`       | little-endian          | standard | none      |
+| `>`       | big-endian             | standard | none      |
+| `!`       | network (= big-endian) | standard | none      |
+
+
+## 计算机如何存储 character
+
+和存储 number 的方式类似，character 通过一定的编码格式进行编码比如 unicode，然后以字节的方式存储。
+
+## Python 中的 struct 模块
+
+Python 提供了三个与 pack 和 unpack 相关的函数
+
+```python
+struct.pack(fmt, v1, v2, ...)
+struct.unpack(fmt, string)
+struct.calcsize(fmt)
+```
+
+第一个函数 `pack` 负责将不同的变量打包在一起，成为一个字节字符串。
+
+第二个函数 `unpack` 将字节字符串解包成为变量。
+
+第三个函数 `calsize` 计算按照格式 fmt 打包的结果有多少个字节。
+
+## pack 操作
+
+Pack 操作必须接受一个 template string 以及需要进行 pack 一组数据，这就意味着 pack 处理操作**定长**的数据
+
+```python
+import struct
+
+a = struct.pack("2I3sI", 12, 34, "abc", 56)
+b = struct.unpack("2I3sI", a)
+
+print b
+```
+
+上面的代码将两个整数 12 和 34，一个字符串 “abc” 和一个整数 56 一起打包成为一个字节字符流，然后再解包。其中打包格式中明确指出了打包的长度：`"2I"` 表明起始是两个`unsigned int`，`"3s"` 表明长度为 4 的字符串，最后一个 `"I"` 表示最后紧跟一个 `unsigned int`，所以上面的打印 b 输出结果是：(12, 34, ‘abc’, 56)，完整的 Python pack 操作支持的数据类型见下表。
+
+| Format | C Type               | Python type        | Standard size | Notes    |
+| ------ | -------------------- | ------------------ | ------------- | -------- |
+| `x`    | pad byte             | no value           |               |          |
+| `c`    | `char`               | string of length 1 | 1             |          |
+| `b`    | `signed char`        | integer            | 1             | (3)      |
+| `B`    | `unsigned char`      | integer            | 1             | (3)      |
+| `?`    | `_Bool`              | bool               | 1             | (1)      |
+| `h`    | `short`              | integer            | 2             | (3)      |
+| `H`    | `unsigned short`     | integer            | 2             | (3)      |
+| `i`    | `int`                | integer            | 4             | (3)      |
+| `I`    | `unsigned int`       | integer            | 4             | (3)      |
+| `l`    | `long`               | integer            | 4             | (3)      |
+| `L`    | `unsigned long`      | integer            | 4             | (3)      |
+| `q`    | `long long`          | integer            | 8             | (2), (3) |
+| `Q`    | `unsigned long long` | integer            | 8             | (2), (3) |
+| `f`    | `float`              | float              | 4             | (4)      |
+| `d`    | `double`             | float              | 8             | (4)      |
+| `s`    | `char[]`             | string             |               |          |
+| `p`    | `char[]`             | string             |               |          |
+| `P`    | `void *`             | integer            |               | (5), (3) |
+
+## 计算字节大小
+
+可以利用 calcsize 来计算模式 "2I3sI" 占用的字节数
+
+```python
+print struct.calcsize("2I3sI") # 16
+```
+
+可以看到上面的三个整型加一个 3 字符的字符串一共占用了 16 个字节。为什么会是 16 个字节呢？不应该是 15 个字节吗？1 个 int 4 字节，3 个字符 3 字节。但是在 `struct` 的打包过程中，根据特定类型的要求，必须进行字节对齐（关于字节对齐详见 https://en.wikipedia.org/wiki/Data_structure_alignment） 。由于默认 `unsigned int` 型占用四个字节，因此要在字符串的位置进行4字节对齐，因此即使是 3 个字符的字符串也要占用 4 个字节。
+
+再看一下不需要字节对齐的模式
+
+```python
+print struct.calcsize("2Is") # 9
+```
+
+由于单字符出现在两个整型之后，不需要进行字节对齐，所以输出结果是 9。
+
+## unpack 操作
+
+对于 `unpack` 而言，只要 `fmt` 对应的字节数和字节字符串 `string` 的字节数一致，就可以成功的进行解析，否则 `unpack` 函数将抛出异常。例如我们也可以使用如下的 `fmt` 解析出 `a`：
+
+```python
+c = struct.unpack("2I2sI", a)
+print struct.calcsize("2I2sI")
+print c   # 16 (12, 34, 'ab', 56)
+```
+
+## 不定长数据 pack
+
+如果打包的数据长度未知该如何打包，这样的打包在网络传输中非常常见。处理这种不定长的内容的主要思路是把长度和内容一起打包，解包时首先解析内容的长度，然后再读取正文。
+
+### 打包变长字符串
+
+对于变长字符在处理的时候可以把字符的长度当成数据的内容一起打包。
+
+```python
+s = bytes(s)
+data = struct.pack("I%ds" % (len(s),), len(s), s)
+```
+
+上面代码把字符 s 的长度打包成内容，可以在进行内容读取的时候直接读取。
+
+### 解包变长字符串
+
+```python
+int_size = struct.calcsize("I")
+(i,), data = struct.unpack("I", data[:int_size]), data[int_size:]
+```
+
+解包变长字符时首先解包内容的长度，在根据内容的长度解包数据
+
+## 参考资料
+
+- http://www.perlmonks.org/?node_id=224666
+- https://docs.python.org/2/library/struct.html
+- http://kaiyuan.me/2015/12/25/python-struct/

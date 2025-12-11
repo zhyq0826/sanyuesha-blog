@@ -1,0 +1,64 @@
+---
+title: "linux 打开标准的 echo、discard 等 TCP 服务"
+summary: "TCP 默认提供了一些标准的服务，大多数系统为了安全都关闭了这些服务，但是有时候为了了解 TCP 的内部机制需要做一些测试，这些服务能够很好的帮助我们熟悉 TCP 的原理和机制，以 Ubuntu 为例来打开这些标准的服务。"
+date: "2018-02-28"
+group: "linux"
+---
+
+
+
+TCP 默认提供了一些标准的服务，大多数系统为了安全都关闭了这些服务，但是有时候为了了解 TCP 的内部机制需要做一些测试，这些服务能够很好的帮助我们熟悉 TCP 的原理和机制，以 Ubuntu 为例来打开这些标准的服务。
+
+
+## 安装 openbsd-inetd
+
+```
+sudo apt-get install openbsd-inetd
+```
+
+
+## 编辑 /etc/inetd.conf
+
+打开 `/etc/inetd.conf` 文件对需要启用的服务关闭其注释
+
+```
+discard     stream  tcp nowait  root    internal
+discard     dgram   udp wait    root    internal
+daytime     stream  tcp nowait  root    internal
+time        stream  tcp nowait  root    internal
+echo        stream  tcp nowait  root    internal
+
+```
+
+## 启动服务
+
+```
+sudo /etc/init.d/openbsd-inetd start
+
+```
+
+## 检查服务
+
+
+```
+netstat -alt | grep -E 'time|discard|daytime'
+
+(env) zhyq@zhyq:~$ netstat -alt | grep -E 'time|discard|daytime'
+tcp        0      0 *:time                  *:*                     LISTEN     
+tcp        0      0 *:discard               *:*                     LISTEN     
+tcp        0      0 *:daytime               *:*                     LISTEN  
+
+```
+
+## 标准服务一览
+
+
+
+| 名称      | TCP 端口 | UDP 端口 | RFC  | 描述                                       |
+| ------- | ------ | ------ | ---- | ---------------------------------------- |
+| echo    | 7      | 7      | 862  | 服务器返回客户端发送的内容                            |
+| discard | 9      | 9      | 863  | 服务器丢弃客户端发送的内容                            |
+| daytime | 13     | 13     | 867  | 服务器以可读的形式返回时间和日期                         |
+| chargen | 19     | 19     | 864  | 当客户端发送一个数据报时，TCP 服务器发送一串连续的字符流，直到客户端中断连接，UDP 服务器发送一个随机长度的数据报 |
+| time    | 37     | 37     | 868  | 服务器返回一个二进制形式的 32bit，表示从 UTC 时间1900.1.1 至今的秒数 |
+

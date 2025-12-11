@@ -1,0 +1,37 @@
+---
+title: "如何修改 linux 内核参数"
+summary: "转自 http://blog.csdn.net/WanGong/article/details/49862953"
+date: "2018-03-01"
+group: "linux"
+---
+
+
+转自 http://blog.csdn.net/WanGong/article/details/49862953
+
+Linux在系统运行时修改内核参数(/proc/sys与/etc/sysctl.conf)，而不需要重新引导系统，这个功能是通过/proc虚拟文件系统实现的。
+
+在/proc/sys目录下存放着大多数的内核参数，并且设计成可以在系统运行的同时进行更改, 可以通过更改/proc/sys中内核参数对应的文件达到修改内核参数的目的(修改过后，保存配置文件就马上自动生效)，不过重新启动机器后之前修改的参数值会失效，所以只能是一种临时参数变更方案。适合调试内核参数优化值的时候使用，如果设置值有问题，重启服务器还原原来的设置参数值了。
+ 
+但是如果调试内核参数优化值结束后，需要永久保存参数值，就要通过修改/etc/sysctl.conf内的内核参数来永久保存更改。但只是修改sysctl文件内的参数值，确认保存修改文件后，设定的参数值并不会马上生效，如果想使参数值修改马上生效，并且不重启服务器，可以执行下面的命令：
+```
+sysctl –p
+```
+ 
+下面介绍一下/proc/sys下内核文件与配置文件sysctl.conf中变量的对应关系：
+由于可以修改的内核参数都在/proc/sys目录下，所以sysctl.conf的变量名省略了目录的前面部分（/proc/sys）。
+ 
+即将/proc/sys中的文件转换成sysctl中的变量依据下面两个简单的规则:
+- 去掉前面部分/proc/sys
+- 将文件名中的斜杠变为点
+
+这两条规则可以将/proc/sys中的任一文件名转换成sysctl中的变量名，例如：
+```
+/proc/sys/net/ipv4/ip_forward ＝> net.ipv4.ip_forward
+/proc/sys/kernel/hostname => kernel.hostname
+```
+ 
+可以使用下面命令查询所有可修改的变量名 
+
+```
+sysctl –a
+```

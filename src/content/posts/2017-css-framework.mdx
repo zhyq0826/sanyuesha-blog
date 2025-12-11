@@ -1,0 +1,81 @@
+---
+title: "开发中常用的 CSS framework（2015年至今）"
+summary: "自 bootstrap CSS framework 已经成了开发者必不可少的技术选型了，随着移动端的不断发展和日趋复杂化的 UI 交互模式的需要，适应各种场景的 CSS framework 也层出不穷，在此盘点一下个人日常开发时选择的几种 CSS framework，排名不分先后..."
+date: "2017-05-25"
+tags: 
+  - "bulma"
+  - "purecss"
+  - "semantic-ui"
+  - "tachyons"
+group: "css"
+---
+
+
+自 bootstrap CSS framework 已经成了开发者必不可少的技术选型了，随着移动端的不断发展和日趋复杂化的 UI 交互模式的需要，适应各种场景的 CSS framework 也层出不穷，在此盘点一下个人日常开发时选择的几种 CSS framework，排名不分先后。
+
+## [purecss](https://purecss.io/)
+
+### 优点
+
+简单实用响应式，提供了 grid 布局、form、menu、 button、table 几种常用组件，无 JavaScript。
+
+### 适用场景
+
+页面所需组件比较少，适用于只需要比较简单的 form 以及很基础的交互，中大型项目不适合，缺 JavaScript，需要借助第三方 JavaScript 或者自己实现，开发效率差。
+
+- https://git-star.com/
+
+## [bulma](https://github.com/jgthms/bulma/)
+
+龙珠布尔玛的英文名字？好像是。
+
+### 优点
+
+mobile first、语义化、模块化、html 结构简洁明确，提供了大量基础性组件，甚至是一般做官方网站使用的 banner、hexo 都有，可以快速构建官网等非常常用的网站样式。
+
+提供了一些非常基础的工具化 class，比如 [modifiers](http://bulma.io/documentation/modifiers/syntax/) 可以直接修改内边距、外边距、边框都常需要改动的地方，非常实用。
+
+开发者友好。
+
+{/* more */}
+
+### 适用场景
+
+官网、活动性页面、大中型项目，缺乏 JavaScript，动态的部分需要自己实现，现在大多数项目都会用第三方 JavaScript framework，bulma 非常容易借助 react、angular、vuejs、emberjs 实现自己的 UI components，这得意于 bulma 本身的组件化和模块化，以及便捷地覆写和修改机制。
+
+- https://github.com/vue-bulma/vue-admin vue bulma
+- https://github.com/bokuweb/re-bulma react bulma
+
+## [tachyons](http://tachyons.io/)
+
+### 优点
+
+无意中发现这货，class 名称非常难看，语义化也差，但是组件能组合出各式各样的 UI 以及布局，非常神奇，有大量现成的已经组合好的 component 供使用。
+
+无 JavaScript。
+
+### 适用场景
+
+能够够最快速的做成常见网站的样式，class 名称语义化差，开发者不友好。
+
+## [semantic-ui](https://semantic-ui.com/)
+
+### 优点
+
+正如其名，semantic 语义化很好，提供了大量常用的组件，能够实现各种组合形成更丰富的组件，而且官方提供了 ember、react 的版本。
+
+基于 jQuery。
+
+### 适用场景
+
+大中型类 CMS 项目非常适合，提供了大量常用组件，包含 JavaScript，但是其覆盖没有 bulma 容易，学习成本高，一旦理解其常用组件结构，使用非常方便。
+
+semantic-ui 性能稍差，在性能要求高的场景慎用。
+
+semantic-ui 引用了 Google fonts，在国内网络环境中最好去掉。
+
+- https://github.com/wecatch/ember-semantic-ui
+- https://github.com/Semantic-Org/Semantic-UI-React
+- https://github.com/Semantic-Org/Semantic-UI-Ember
+
+

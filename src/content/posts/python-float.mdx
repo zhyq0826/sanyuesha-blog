@@ -1,0 +1,31 @@
+---
+title: "Python float 和 decimal"
+summary: "在 Python 官方的文档 Floating Point Arithmetic: Issues and Limitations 解释了 Python float 类型的一些问题和限制。"
+date: "2017-11-08"
+tags: 
+  - "浮点类型"
+group: "python"
+---
+
+
+在 Python 官方的文档 [Floating Point Arithmetic: Issues and Limitations](https://docs.python.org/2/tutorial/floatingpoint.html) 解释了 Python float 类型的一些问题和限制。
+
+这里我想记录的是 Python 的 Decimal 类型和 float 的转换问题。
+
+Python 的 Decimal 支持从 str 和 float 进行转换，比如
+
+```python
+>>> from decimal import Decimal
+>>> f = 3.1666666666666666
+>>> Decimal(str(f))
+Decimal('3.16666666667')
+>>> Decimal(f)
+Decimal('3.166666666666666518636930049979127943515777587890625')
+>>> Decimal.from_float(f)
+Decimal('3.166666666666666518636930049979127943515777587890625')
+>>> 
+```
+
+比如很明显能看出一个数通过 str 或 float 直接转换都会和真正输入的不一样，这个问题是由于小数以二进制形式在计算机内表达的问题。除此之外，可以很明显看到 float 转换到 str 是经过 round 的，具体可以参考 [converting-a-float-to-a-string-without-rounding-it](https://stackoverflow.com/questions/1317558/converting-a-float-to-a-string-without-rounding-it) ，最终说的都是浮点用二进制表示的问题。
+
+所以在应对精度非常高的浮点的时候，记得一定要**保留指定位的小数**，尤其是在数据库设计时如果需要 Decimal 类型的，记得指定**具体的精度**来使数据在数据库和 Python 中都能保持一致。

@@ -1,12 +1,12 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
-import Timeline from "../components/Timeline.astro";
+import TimelineComponent from "../components/Timeline.astro";
 import { getCollection } from "astro:content";
 
 const posts = (await getCollection("posts")).sort((a, b) => +b.data.date - +a.data.date);
 ---
 
 <BaseLayout title="时间线 | 三月沙" description="按时间浏览全部文章与更新。">
-  <Timeline items={posts} />
+  <TimelineComponent items={posts} />
 </BaseLayout>
 

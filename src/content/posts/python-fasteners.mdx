@@ -1,0 +1,31 @@
+---
+title: "提供锁机制的 Python fasteners 库"
+summary: "fasteners 是提供多进程或多线程环境之下锁的一个 Python 库，可以快速在在代码中实现文件锁、读写锁，并且其提供了多种方式来获得和使用锁，使用简单。"
+date: "2018-04-14"
+group: "python"
+---
+
+
+[fasteners](http://fasteners.readthedocs.io/en/latest/) 是提供多进程或多线程环境之下锁的一个 Python 库，可以快速在在代码中实现文件锁、读写锁，并且其提供了多种方式来获得和使用锁，使用简单。
+
+```python
+import time
+
+import fasteners
+
+@fasteners.interprocess_locked('/tmp/tmp_lock_file')
+def test():
+    for i in range(10):
+        print('I have the lock')
+        time.sleep(1)
+
+print('Waiting for the lock')
+test()
+
+```
+
+文件锁常用来在异步任务中保证只有一个任务在执行，其他任务必须等待文件锁的释放才能执行，利用 fasteners 可以很快实现这一需求，so easy！
+
+更多阅读
+
+[非常有用的 Python 第三方库](/blog/python-lib)

@@ -1,0 +1,51 @@
+---
+title: "使用 cookiecutter 快速构建 Python 项目"
+summary: "# 什么是 cookiecutter"
+date: "2017-09-12"
+tags: 
+  - "cli"
+group: "python"
+---
+
+
+# 什么是 cookiecutter
+
+
+[cookiecutter](https://github.com/audreyr/cookiecutter) 是一款 CLI 用来帮助开发者从模板快速构建项目，比如利用 https://github.com/audreyr/cookiecutter-pypackage Python 开发者可以快速构建 Python 项目。
+
+# 如何使用？
+
+安装 `pip install cookiecutter`
+
+安装完成可以直接使用模板所在的 repo 进行项目创建，第一次使用模板**必须指定模板所在仓库地址** `cookiecutter https://github.com/audreyr/cookiecutter-pypackage` 或者 `cookiecutter gh:audreyr/cookiecutter-pypackage`。
+
+cookiecutter 会在第一次使用模板的时候 clone 模板到 $HOME/.cookiecutters 目录 `/Users/zhyq0826/.cookiecutters/cookiecutter-pypackage`。
+
+之后再次使用已经 clone 的模板可以直接使用名称 `cookiecutter cookiecutter-pypackage`。
+
+# cookiecutter-pypackage
+
+cookiecutter-pypackage 模板提供了 Python 项目常用的大部分配置包括
+
+```
+├── AUTHORS.rst
+├── CONTRIBUTING.rst
+├── HISTORY.rst
+├── LICENSE
+├── MANIFEST.in
+├── Makefile
+├── README.rst
+├── docs
+├── main.py
+├── markdown
+├── requirements_dev.txt
+├── setting.py
+├── setup.cfg
+├── setup.py
+├── tests
+├── tox.ini
+├── travis_pypi_setup.py
+
+```
+
+> 发现好工具，会用好工具，节省时间，珍爱生命 😁。

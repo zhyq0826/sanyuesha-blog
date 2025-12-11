@@ -1,0 +1,140 @@
+---
+title: "Golang 测试"
+summary: "Go 提供了 来执行测试，这个命令会在当前 package 中寻找符合 的文件，并在文件中寻找符合 、、 函数执行测试，如果想要执行当前 package 中的所有测试，可以执行 ，这个命令会搜索当前目录以及子目录中的所有符合条件的测试文件，详细测试规则看 。"
+date: "2019-08-21"
+tags: 
+  - "test"
+group: "golang"
+---
+
+
+Go 提供了 `go test` 来执行测试，这个命令会在当前 package 中寻找符合 `*_test.go` 的文件，并在文件中寻找符合 `TestXxx(*testing.T) {}` 、`BenchmarkXxx(b *testing.B){}`、`ExampleXxxx(){}` 函数执行测试，如果想要执行当前 package 中的所有测试，可以执行 `go test ./...` ，这个命令会搜索当前目录以及子目录中的所有符合条件的测试文件，详细测试规则看 `go help testfunc` 。
+
+### Go 测试是并行还是串行
+
+默认情况下 `go test` 在**不同的 package 之间是并行执行测试**，在**每个 package 内部是串行执行测试**。如果想要在 package 内部开启并行测试，需要在测试函数中显式执行 `t.Parallel()` 告诉 `go test` 这个函数可以与其他测试并行执行，一旦开启并行测试，一定要确保测试函数之间的资源竞争的问题已经得到正确的解决，否则可能会有意想不到的问题。
+
+Go 提供了可以限制 package 之间并行测试的命令：
+
+```bash
+go test -parallel 1 -p 1
+```
+
+`-parallel 1` 表示允许同时执行并行测试的函数数目是 1，默认是 GOMAXPROCS，`-p 1` 表示允许并行测试的 test binary 同时只有一个，默认是 CPU的核数。Go 执行测试的时候是把每个 package 都 build 成 binary 之后再去执行，这个数目就是设置在被 go test 同时执行的 package 的 binary 有几个。
+
+还有一种可以让多个 package 并行测试的办法是测试的时候指定多个 package：
+
+```bash
+go test p1 p2 p3
+```
+
+通过这种方式执行测试时，三个包是并行执行的。
+
+所以如果想要让你的测试执行速度加快，其中一种办法就是把**测试放到不同的 package 中**，如果某个 package 中测试文件很多，可以把这些文件单独成包：
+
+```bash
+graphql/test
+├── mutation
+│   └── mutation_test.go
+└── query
+    └── query_test.go
+```
+
+如果你的并行测试依赖于 database 这样的外部系统，确保你使用的 database 在每个 test package 之间是相互独立的，比如上述 mutation_test.go 和 query_test.go 使用了相同的表结构的不同数据库。
+
+### Go test flags
+
+上面限制 Go 并行测试的其实都是 Go 提供的 test flag，详细见 https://golang.org/cmd/go/#hdr-Testing_flags  ， 其中有几个对日常测试很重要的 flag 这里单独来讲讲。
+
+#### `-v`
+
+表示输出测试的详细信息，有助于本地开发调试，对应的代码 `testing.Verbose()` 。
+
+#### `-short`
+
+表示只想执行运行时间比较短的测试，这个 flag 一般会结合 `testing.Skip()` ，可以让开发这选择跳过执行时间较长的测试：
+
+```go
+func TestCountMallocs(t *testing.T) {
+  if testing.Short() {
+    t.Skip("skipping malloc count in short mode")
+  }
+  // rest of test...
+}
+```
+
+#### `-timeout`
+
+指定测试执行的超时时间，如果测试时间很长，可以通过这个 flag 强制测试停止
+
+`-run`
+
+指定想要执行的测试函数名称，通过正则匹配要执行的测试函数名称
+
+`-parallel`
+
+指定在同一个package 内并行执行的测试函数数目，默认是 GOMAXPROCS
+
+#### `-p`
+
+指定同时执行 build 和 test 的包的数目，默认是 CPU 核数，可以指定 `-p 1` 限制对包的测试一个一个串行执行。
+
+#### `-cpu`
+
+指定需要在哪些CPU上执行测试 ` go test -cpu=1,2,4` ，默认情况下测试都只会在一个 CPU 上执行，如果想要在多个 CPU 上都执行一遍测试，可以通过环境变量指定 GOMAXPROCS ，`GOMAXPROCS=2 go test` 表示在 2 个 CPU 上执行测试，也就是测试会执行 2 次。
+
+#### `-args`
+
+指定测试的命令参数，一般这个 flag 放在 go test 命令的最后
+
+### 使用不同名包打破引用循环
+
+Go test 支持在不同名的 package 属于同一个目录：
+
+```bash
+
+├── builder.go
+├── builder_test.go
+├── compare.go
+├── compare_test.go
+├── example_test.go
+├── export_test.go
+├── reader.go
+├── reader_test.go
+├── replace.go
+├── replace_test.go
+├── search.go
+├── search_test.go
+├── strings.go
+├── strings.s
+└── strings_test.go
+```
+
+只要包名是以 package_test 形式命名即可：
+
+```go
+package strings_test
+
+import (
+	"bytes"
+	"fmt"
+	"io"
+	"math/rand"
+	"reflect"
+	"strconv"
+	. "strings"
+	"testing"
+	"unicode"
+	"unicode/utf8"
+	"unsafe"
+)
+```
+
+这样的目的是如果被测试的包 A 被 B 引用了，A 的测试文件又引用了 B，从而会形成循环引用，使用不同的包名，可以打破这种引用关系，Go 标准库的 strings 就是这种案例。
+
+### 参考
+
+- https://splice.com/blog/lesser-known-features-go-test/
+- https://golang.org/cmd/go/#hdr-Testing_flags
+- https://deepzz.com/post/the-command-flag-of-go-test.html
+

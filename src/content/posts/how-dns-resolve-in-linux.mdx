@@ -1,0 +1,49 @@
+---
+title: "linux 中的 dns 解析"
+summary: "> 我在用 linux 桌面环境有 2 年了，做服务端开发大部分时候都在和 linux 打交道，后来转投 mac，其实本质都是一样的，好奇 linux 下的 dns 解析的过程，看了很多资料发现过程还是比我想象的要复杂，虽然想好好写一写但投入时间还是挺大的，此篇我也许会慢慢更新直..."
+date: "2017-11-08"
+tags: 
+  - "dns"
+group: "linux"
+---
+
+
+> 我在用 linux 桌面环境有 2 年了，做服务端开发大部分时候都在和 linux 打交道，后来转投 mac，其实本质都是一样的，好奇 linux 下的 dns 解析的过程，看了很多资料发现过程还是比我想象的要复杂，虽然想好好写一写但投入时间还是挺大的，此篇我也许会慢慢更新直到完整，也许可能就写这么一些了。
+
+# 什么是 DNS
+
+DNS 全称是 Domain Name System，大意是域名解析系统，它的职责是把域名翻译成一个一个可以识别的 IP 供不同的计算机设备连接。
+
+
+# linux 有关 DNS 解析的配置和文件
+
+linux 中有三个文件是关于 dns 解析的：
+
+- /etc/hosts 记录 hostname 对应的ip地址
+- /etc/resolv.conf 设置DNS服务器的ip地址
+- /etc/host.conf 指定域名解析的顺序（是从本地的hosts文件解析还是从DNS解析）
+
+
+`/etc/hosts` 的存在是早期网络并不是特别发达，仅仅在 hosts 中保存主机名和 ip 地址的对应关系即可满足需要，随着网络的发展逐渐出现分布式 DNS 服务，但是 `/etc/hosts` 形式保留下来了。
+
+`/etc/resolv.conf` 是配置DNS 域名和 ip 地址的，网上有很多资料可以参考一下。
+
+
+# 一个域名是如何被解析的
+
+[How the Domain Name System (DNS) Works
+](https://www.verisign.com/en_US/website-presence/online/how-dns-works/index.xhtml) 这篇大致解释了域名被解析的过程，基本可以分为：
+
+- 向根域名服务请求顶级域名所在所在域名服务
+- 向顶级域名服务请求二级域名服务
+- 向二级域名服务请求具体的 ip 地址
+
+真实的解析过程是要更复杂的，参考 [linux下DNS解析（nslookup、dig、host）](http://122269875.blog.51cto.com/1660536/1713947)
+
+
+# 参考资料
+
+- http://122269875.blog.51cto.com/1660536/1713947
+- https://www.nslookuptool.com/chs/
+- http://roclinux.cn/?p=1820
+- http://www.steves-internet-guide.com/dns-guide-beginners/

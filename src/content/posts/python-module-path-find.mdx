@@ -1,0 +1,223 @@
+---
+title: "如何理解 Python 的模块查找原理与方式"
+summary: "## 基础概念"
+date: "2016-05-28"
+tags: 
+  - "module"
+  - "path"
+group: "python"
+---
+
+
+## 基础概念
+
+### module
+
+模块， 一个 `py` 文件或以其他文件形式存在的可被导入的就是一个模块
+
+### package
+
+包，包含有 `__init__` 文件的文件夹
+
+### relative path
+  
+相对路径，相对于某个目录的路径
+
+### absolute path
+
+绝对路径，全路径
+
+### 路径查找
+
+python 解释器查找被引入的包或模块
+
+## Python 解释器是如何查找包和模块的
+
+
+Python 执行一个 py 文件，无论执行的方式是用绝对路径还是相对路径，interpreter 都会把文件所在的 directory 加入 sys.path 这个 list 中，Python 就是在 sys.path 中查找包和模块的，sys.path 中的内容本身又是又 Python 的环境变量决定。
+
+{/* more */}
+
+**code-1**
+
+```python
+#test.py
+
+import os
+import sys
+
+print sys.path[0]
+
+# execute
+python test.py
+python /Users/x/workspace/blog-code/p2016_05_28_python_path_find/test.py 
+```
+
+执行表明相对路径和绝对路径都输出相同的结果，而且无论哪种执行方式，test.py 所在的文件夹都会被加入 sys.path 的首位，也就是索引为0的位置。
+
+
+## Python 解释器查找包的顺序是什么
+
+
+
+
+解释器查找包，首先搜索 built-in module，其次搜索 sys.path ，**这样的查找顺序将会导致同名包或模块被遮蔽。**
+
+
+**code-2**
+
+```bash
+#ls
+├── os.py
+├── test2.py
+├── redis.py
+
+#test2.py
+import os
+from redis import Redis
+
+#execute test2.py
+Traceback (most recent call last):
+  File "/Users/x/workspace/blog-code/p2016_05_28_python_path_find/test2.py", line 1, in <module>
+    from redis import Redis
+ImportError: cannot import name Redis
+
+```
+
+由于 `os` 是 built-in module，即使在同目录下有同名模块，解释器依然可以找到正确的 `os` 模块，可以证实 built-in module 不会被遮蔽，而 `redis` 属于第三方模块，默认安装位置是 Python 环境变量中的 site-packages，解释器启动之后会将此目录中的内容加入 sys.path，由于当前目录会在 sys.path 的首位，当前目录的 `redis` 优先被找到，site-packages 中的 `redis` 模块被遮蔽了。
+
+
+## 交互式执行环境的查找顺序
+
+进入交互式执行环境，解释器会自动把当前目录加入 sys.path, 这时当前目录是以相对路径的形式出现在 sys.path 中:
+
+```bash
+>>> import os.path
+>>> import sys
+>>> os.path.abspath(sys.path[0])
+'/Users/x/workspace/blog-code'
+>>> 
+```
+
+除此之外，其他与执行一个文件是相同的。
+
+
+## 模块中的 `__file__` 变量
+
+>`__file__` is the pathname of the file from which the module was loaded, if it was loaded from a file. 如果一个模块是从文件加载的，`__file__` 就是该模块的路径名--[Python Doc](https://docs.python.org/2/reference/datamodel.html): 
+
+顾名思义，当模块以文件的形式出现 `__file__` 指的是模块文件的路径名，以相对路径执行 `__file__` 是相对路径，以绝对路径执行 `__file__` 是绝对路径。
+
+
+```python
+#test3.py
+print __file__
+
+#相对路径执行
+
+python test3.py
+test3.py
+
+#绝对路径执行
+python /Users/x/workspace/blog-code/p2016_05_28_python_path_find/test3.py
+/Users/x/workspace/blog-code/p2016_05_28_python_path_find/test3.py
+```
+
+为了保证`__file__` 每次都能准确得到模块的正确位置，最好对其再取一次绝对路径 `os.path.abspath(__file__)`。
+
+
+**交互式 shell 中的 `__file__`**
+
+
+```bash
+>>> __file__
+Traceback (most recent call last):
+  File "<input>", line 1, in <module>
+NameError: name '__file__' is not defined
+```
+
+这是因为当前交互式shell的执行并不是以文件的形式加载，所以不存在`__file__` 这样的属性。
+
+
+## sys.argv[0] 变量
+
+sys.argv[0] 是它用来获取主入口执行文件。
+
+
+```
+#test.py
+import sys
+print __file__
+print sys.argv[0]
+```
+
+以上 print 输出相同的结果，因为主执行文件和`__file__`所属的模块是同一个，当我们改变入口文件，区别就出现了。
+
+
+```
+#test.py
+import sys
+print __file__
+print sys.argv[0]
+
+#test2.py
+import test
+
+#execute test2.py
+/Users/x/workspace/blog-code/p2016_05_28_python_path_find/child/test.py #__file__
+test2.py #sys.argv[0]
+```
+
+总的来说，sys.argv[0] 是获得入口执行文件路径，`__file__` 是获得任意模块文件的路径。
+
+
+## sys.modules 的作用
+
+既然 Python 是在 sys.path 中搜索模块的，那载入的模块存放在何处？答案就是 sys.modules。模块一经载入，Python 会把这个模块加入 sys.modules 中供下次载入使用，这样可以加速模块的引入，起到缓存的作用。
+
+```bash
+>>> import sys
+>>> sys.modules['tornado']
+Traceback (most recent call last):
+  File "<input>", line 1, in <module>
+KeyError: 'tornado'
+>>> import tornado
+>>> sys.modules['tornado']
+<module 'tornado' from '/Users/x/python_dev/lib/python2.7/site-packages/tornado/__init__.pyc'>
+```
+
+前面说过 Python 解释器启动之后，会把预先载入 built-in module，可以通过 sys.modules 验证。
+
+```
+>>> sys.modules['os']
+<module 'os' from '/Users/x/python_dev/lib/python2.7/os.pyc'>
+>>> 
+```
+
+借助 sys.modules 和 `__file__`，可以动态获取所有已加载模块目录和路径。
+
+```python
+>>> import os
+>>> os.path.realpath(sys.modules['os'].__file__)
+'/Users/x/python_dev/lib/python2.7/os.pyc'
+>>> import tornado
+>>> os.path.realpath(sys.modules['tornado'].__file__)
+'/Users/x/python_dev/lib/python2.7/site-packages/tornado/__init__.pyc'
+```
+
+```python
+def get_module_dir(name):
+    path = getattr(sys.modules[name], '__file__', None)
+    if not path
+        raise AttributeError('module %s has not attribute __file__'%name)
+    return os.path.dirname(os.path.abspath(path))
+```
+
+
+## summary
+
+总的来说，Python 是通过查找 sys.path 来决定包的导入，并且系统包优先级>同目录>sys.path，Python 中的特有属性 `__file__` 以及 sys.argv[0]，sys.modules 都能帮助我们理解包的查找和导入概念，只要能正确理解 sys.path 的作用和行为，理解包的查找就不是难题了。
+
+文中所有代码见：[github](https://github.com/zhyq0826/blog-code/tree/master/p2016_05_28_python_path_find)
+
+>转载请注明出处

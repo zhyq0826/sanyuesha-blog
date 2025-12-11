@@ -1,0 +1,125 @@
+---
+title: "创建一个杀手级 Go Cli 的 5 个关键点"
+summary: "> 本文翻译自 https://blog.alexellis.io/5-keys-to-a-killer-go-cli/。 > > 本文的作者是 OpenFaaS 的作者，原文中作者结合了自身开发 OpenFaaS 经历说明的 CLI 应该需要的注意事项，翻译过程中为了方便理解很..."
+date: "2018-05-23"
+tags: 
+  - "cli"
+group: "golang"
+---
+
+
+> 本文翻译自 https://blog.alexellis.io/5-keys-to-a-killer-go-cli/。
+>
+> 本文的作者是 [OpenFaaS](https://github.com/openfaas) 的作者，原文中作者结合了自身开发 OpenFaaS 经历说明的 CLI 应该需要的注意事项，翻译过程中为了方便理解很多已经略去，但是不妨碍整体理解作者表达使用 Go 创建优秀 CLI 的意图以及方法。
+
+CLI（命令行接口）是一种文本接口，其提供了一种快速、自动化的方式与应用程序打交道，并且还可以和其他命令行程序接口创建新的工作流。
+
+## 选择 Go 创建 CLI
+
+选择 Go 创建 CLI 的优势
+
+**Compiles to a single static binary — 能够编译成单独的二进制包** 
+
+Go 可以非常方便的根据平台打包成二进制包发布，根据平台的不同，只需要在编译的时候提供不同的环境变量即可：
+
+```shell
+GOOS=windows go build -o cli.exe
+GOOS=linux go build -o cli
+GOARCH=armv7 GOOS=linux go build -o cli-rpi
+```
+
+**Consistent style — 一致的风格**
+
+无论你的项目是基于何种编辑器，Go 总是提供一致的代码风格，这点和 Nodejs 不同，后者总是包含很多种不同的 "task runners" 让人眼花缭乱。
+
+Go 在风格保持方面的设计可以说非常不含糊，这样的设计有利于开发者进行协作。
+
+**Fast on every platform — 在任何平台都很快**
+
+编译后 Go 二进制包加载非常快相比 Nodejs 来说。
+
+**Easy to create a REST client — 创建 REST 风格的 client 非常容易**
+
+Go 提供了非常丰富的 http client，并且内置了对 xml、json 的支持，社区的第三方库也提供了对 YAML 的支持
+
+## Parse flags & arguments
+
+Go 标准库提供了 flags 包来创建 CLI 应用程序：
+
+```Go
+package main
+
+import (
+	"flag"
+	"fmt"
+	"os"
+)
+
+func main() {
+	var image string
+	flag.StringVar(&image, "image", "", "Docker image")
+    flag.Parse()
+    
+	if len(image) == 0 {
+		fmt.Fprintf(os.Stderr, "You must specify a Docker image name")
+	}
+
+	fmt.Printf("Your Docker image was: %s", image)
+}
+```
+
+Go 的简单朴可以让你仅仅使用一个文件就能够编译成要执行的二进制包。
+
+如果你觉得 flags 包提供的特性已经无法满足你的 CLI ，你可以考虑使用 [Cobra](https://github.com/spf13/cobra) 。
+
+[Cobra](https://github.com/spf13/cobra) 被 Docker、Kubernetes 等知名开源软件使用，Cobra 也可以让创建 CLI 的文档变得非常简单。除此之外，Cobra 支持动词名词的语法，这有助于提升 CLI 的用户体验：
+
+```shell
+faas-cli -deploy -image=functions/alpine -name=cat -fprocess=/bin/cat
+
+```
+
+To：
+
+```shell
+faas-cli deploy --image=functions/alpine --name=cat --fprocess=/bin/cat
+
+```
+
+## 自动化一切
+
+使用一个免费公开的 CI 平台来自动化 build 工作，比如 Travis，这样可以让 contributors 检测他们的贡献是否可以被集成。
+
+使用 Github release 来跟踪项目的变化和里程碑，可以在 Travis 中创建一个 post-build action 来自动打包发布各个平台的应用。
+
+如果你使用 Docker ，每当要发布新的 release 同时也发布对应的 Docker 镜像。
+
+## 集成包管理器
+
+如果你想要你的受众非常容易使用你的 CLI，最好让你的 CLI 支持使用包管理器安装：
+
+- Mac
+
+  大多数开发者的环境都是 Mac，所以提供 brew 的支持是个明智的选择
+
+- Linux
+
+  对于 Linux 可以提供命令行安装和使用的方案，比如 `curl -sL https://cli.openfaas.com | sh`
+
+- Windows
+
+  大多数 Windows 用户倾向于使用安装的方式，Windows 平台的好用的 shell 工具在不断增多，也可以考虑提供一种 shell 的安装方式
+
+无论是支持哪个平台的包管理，优先确保你的工作是可自动化的，而且升级能够平滑进行。
+
+## 接受社区的贡献和收集反馈
+
+为用户提供一种非常方便的反馈方式。基础的反馈和统计可以通过 Github 或者 brew 来完成。有些关键性的项目是可以通过第三方工具收集反馈，比如通过 brew、Visual Studio Code 等：
+
+- 哪个命令被使用
+- OS、CLI version、location 等等
+
+
+
+
+

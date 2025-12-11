@@ -1,0 +1,43 @@
+---
+title: "同一主机安装多个 Python 版本"
+summary: "app-turbo 为了支持多个 Python 版本必须要在多个版本下进行测试，以 Ubuntu 为例，默认发行版都会有一个Python 2.7 和 一个 Python 3.x 的版本，但是这远不能够满足开发和测试需要。我本人在折腾环境方面是比较懒，很想找一个工具能够自动把所有事..."
+date: "2018-05-18"
+tags: 
+  - "多版本安装"
+group: "python"
+---
+
+
+[app-turbo](https://github.com/wecatch/app-turbo) 为了支持多个 Python 版本必须要在多个版本下进行测试，以 Ubuntu 为例，默认发行版都会有一个Python 2.7 和 一个 Python 3.x 的版本，但是这远不能够满足开发和测试需要。我本人在折腾环境方面是比较懒，很想找一个工具能够自动把所有事情都考虑好，一个命令就搞定，可惜搜罗了几分钟之后，没有找到方案。
+
+>  世间一切的问题，都应该从它开始的地方寻找答案。
+
+进 Python 官方网站，找到 Python 包下载源：https://www.python.org/downloads/， 选择一个我们需要的版本和对应平台的 package 下载。
+
+```shell
+wget https://www.python.org/ftp/python/3.5.5/Python-3.5.5.tgz
+```
+
+解压包：
+
+```shell
+tar xvfz Python-3.5.5.tgz
+```
+
+进入源码目录，查看 README 文件，仔细阅读发现 Python 官方已经提供了多版本安装的方案：
+
+```shell
+On Unix and Mac systems if you intend to install multiple versions of Python using the same installation prefix (--prefix argument to the configure script) you must take care that your primary python executable is not overwritten by the installation of a different version. 
+
+All files and directories installed  using "make altinstall" contain the major and minor version and can thus live side-by-side. "make install" also creates ${prefix}/bin/python3 which refers to ${prefix}/bin/pythonX.Y.  
+
+If you intend to install multiple versions using the same prefix you must decide which version (if any) is your "primary" version.  Install that version using "make install".  Install all other versions using "make altinstall".
+
+For example, if you want to install Python 2.6, 2.7 and 3.5 with 2.7 being the primary version, you would execute "make install" in your 2.7 build directory and "make altinstall" in the others.
+```
+
+不难理解，Python 在 configure 阶段已经提供了 `—prefix` 来选择安装的目录。
+
+如果你使用的相同的 prefix 目录，**在安装阶段使用 `make altinstall` 的方式安装会自动带上主版本号的信息**，并且不会覆盖当前环境中默认的 primary Python，如果你想覆盖 primary Python，则使用 `make install` 即可。
+
+有时间了我可能会写个工具一键安装多个 Python 版本，嗯，等有时间了😑。

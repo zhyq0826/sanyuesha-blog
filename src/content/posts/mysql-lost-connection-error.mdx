@@ -1,0 +1,90 @@
+---
+title: "MySQL 2013 lost connection error 详解"
+summary: "MySQL 在线上的一个新的部署的服务中报："
+date: "2018-04-23"
+tags: 
+  - "error"
+group: "mysql"
+---
+
+
+MySQL 在线上的一个新的部署的服务中报：
+
+```mysql
+pymysql.err.OperationalError (2013, 'Lost connection to MySQL server during query')
+```
+
+翻阅官方文档解释了这么几种可能性问题，详见：https://dev.mysql.com/doc/refman/5.7/en/error-lost-connection.html
+
+1. 连接 MySQL 服务的网络有问题
+
+   网络问题会导致 MySQL 的 connection 无故断掉，会报这个错误，所以首先检查 client 服务到 MySQL 服务是不是延迟很高。
+
+2. 读取或写入很多行数据，导致数据传输超时
+
+   MySQL [net_read_timeout](https://dev.mysql.com/doc/refman/5.7/en/server-system-variables.html#sysvar_net_read_timeout) 和 [net_write_timeout](https://dev.mysql.com/doc/refman/5.7/en/server-system-variables.html#sysvar_net_write_timeout) 控制一次连接传输数据等待的时间，如果 server 从 client 读取数据 net_read_timeout 用来控制在 connection 断开之前等待的秒数，如果 server 正在往 client 写入数据，则用 net_write_timeout 控制。
+
+   所以如果有大量的数据进行插入或者读取，注意调整这两个 variable 来控制时间，以防止 connection 被断掉，默认是 30s。
+
+3. 少数情况下，这个错误发生在 connection 初始化的时候
+
+   如果与 MySQL 服务器建立连接非常的慢，而且MySQL 的服务 [connect_timeout](https://dev.mysql.com/doc/refman/5.7/en/server-system-variables.html#sysvar_connect_timeout) 又很低，则有可能会发生这样的错误，可以检查初始连接建立的开销，也可以检查 SHOW GLOBAL STATUS LIKE 'Aborted_connects' 来查看是否有大量的连接被断开的情况出现。
+
+4. 如果以上都不是，有可能是数据传输中使用了较大的 string filed 或者 blob filed，导致超过了 [max_allowed_packet](https://dev.mysql.com/doc/refman/5.7/en/server-system-variables.html#sysvar_max_allowed_packet)
+
+   检查你的 MySQL 服务，查看是否有连接会传输比较大的数据，此时你可能会遇到 [ER_NET_PACKET_TOO_LARGE](https://dev.mysql.com/doc/refman/5.7/en/error-messages-server.html#error_er_net_packet_too_large)  这个错误，确保你的 max_allowed_packte 是足够大的，足够在一次数据中传输比较大的数据
+
+对照检查了上面的 4 种情况，发现新上线的产品并不满足，查询 MySQL 错误日志，报如下错误：
+
+```shell
+180422 17:13:57 [Warning] /opt/udb/program/mysql/mysql-5.5.24/bin/mysqld: Forcing close of thread 156972  user: 'block_chain'
+
+180422 17:13:57 [Warning] /opt/udb/program/mysql/mysql-5.5.24/bin/mysqld: Forcing close of thread 156967  user: 'block_chain'
+
+180422 17:13:57 [Warning] /opt/udb/program/mysql/mysql-5.5.24/bin/mysqld: Forcing close of thread 156923  user: 'block_chain'
+
+180422 17:13:57 [Warning] /opt/udb/program/mysql/mysql-5.5.24/bin/mysqld: Forcing close of thread 156921  user: 'block_chain'
+
+180422 17:13:57 [Warning] /opt/udb/program/mysql/mysql-5.5.24/bin/mysqld: Forcing close of thread 156880  user: 'block_chain'
+
+180422 17:13:57 [Warning] /opt/udb/program/mysql/mysql-5.5.24/bin/mysqld: Forcing close of thread 156879  user: 'block_chain'
+
+180422 17:13:57 [Warning] /opt/udb/program/mysql/mysql-5.5.24/bin/mysqld: Forcing close of thread 156869  user: 'block_chain'
+
+180422 17:13:57 [Warning] /opt/udb/program/mysql/mysql-5.5.24/bin/mysqld: Forcing close of thread 156854  user: 'block_chain'
+
+180422 17:13:57 [Warning] /opt/udb/program/mysql/mysql-5.5.24/bin/mysqld: Forcing close of thread 156803  user: 'block_chain'
+
+180422 17:13:57 [Warning] /opt/udb/program/mysql/mysql-5.5.24/bin/mysqld: Forcing close of thread 156793  user: 'block_chain'
+
+180422 17:13:57 [Warning] /opt/udb/program/mysql/mysql-5.5.24/bin/mysqld: Forcing close of thread 156786  user: 'block_chain'
+```
+
+从日志中不难看出是 MySQL 进程强行关闭了连接中的线程，也就是说由于连接触发了某种条件导致连接被 MySQL 强制关了。
+
+MySQL 官方有上百个参数，既然是触发某种条件，猜测可能是某个超时设置，查看所有超时相关参数:
+
+```mysql
+show variables like '%timeout%';
+
+connect_timeout	10
+delayed_insert_timeout	300
+innodb_lock_wait_timeout	50
+innodb_rollback_on_timeout	OFF
+interactive_timeout	28800
+lock_wait_timeout	31536000
+net_read_timeout	30
+net_write_timeout	60
+slave_net_timeout	3600
+wait_timeout	300
+```
+
+依次对照每个超时参数的含义最后锁定了**wait_timeout** 这个参数，其含义是：**The number of seconds the server waits for activity on a noninteractive connection before closing it**. 
+
+**由于在应用程序中数据库连接池配置的连接回收时间是 600s，MySQL 配置的是 300s，也就是应用程序中认为一个连接还没有到回收的时间，但是 MySQL 自己判断需要强制回收了。**
+
+**解决方案**：尝试把 MySQL 的 **wait_timeout** 调至比应用程序高一些，观察应用程序行为。结果不再报错了，至此就找到了 MySQL 报 `Lost connection to MySQL server during query` 的问题了。
+
+**小结**
+
+MySQL 的这个错误除了官方说的几种 case ，还需要针对自己的业务场景进行适当探索和甄别，具体情况具体分析，也应了那句话**大胆猜想，小心求证**。

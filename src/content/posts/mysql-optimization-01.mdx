@@ -1,0 +1,626 @@
+---
+title: "MySQL 优化 01 之慢查询"
+summary: "最近线上生产环境中有些 MySQL 的语句特别慢，跑一个查询需要大概 5 分钟，已经到了不得不解决的地步了。"
+date: "2018-11-13"
+tags: 
+  - "优化"
+  - "聚合"
+  - "join"
+group: "mysql"
+---
+
+
+最近线上生产环境中有些 MySQL 的语句特别慢，跑一个查询需要大概 5 分钟，已经到了不得不解决的地步了。
+
+
+## 案例一：单表复杂语句的聚合计算
+
+### 问题描述
+
+单表数据超过 1500 万，写入不是特别频繁，查询很多，需要对表中订单的费用的进行实时计算，主要是基于时间以及订单状态进行运算。
+
+```sql
+SELECT count(order.id) AS order_count, sum(order.original_total_fee) AS original_total_fee, sum(order.settlement_fee) AS settlement_fee, sum(order.total_fee) AS total_fee, order.seller_id AS order_seller_id
+FROM order
+WHERE order.create_time < '2018-11-10 00:00:00' and create_time > '2016-10-10' AND order.order_status IN ('paid', 'refund_refused') AND order.partner_id IN (105203908, 105203916, 105203958, 105203910) AND  order.seller_id = 96691 AND order.user_id NOT IN (105203908, 105203916, 105203958, 105203910) GROUP BY order.seller_id;
+
+```
+
+表中有以下索引：
+
+```json
+
+{
+    "data":
+    [
+        {
+            "Table": "order",
+            "Non_unique": 0,
+            "Key_name": "PRIMARY",
+            "Seq_in_index": 1,
+            "Column_name": "id",
+            "Collation": "A",
+            "Cardinality": 16500090,
+            "Sub_part": null,
+            "Packed": null,
+            "Null": "",
+            "Index_type": "BTREE",
+            "Comment": "",
+            "Index_comment": ""
+        },
+        {
+            "Table": "order",
+            "Non_unique": 1,
+            "Key_name": "order_order_id_device_id",
+            "Seq_in_index": 1,
+            "Column_name": "order_id",
+            "Collation": "A",
+            "Cardinality": 16500090,
+            "Sub_part": null,
+            "Packed": null,
+            "Null": "",
+            "Index_type": "BTREE",
+            "Comment": "",
+            "Index_comment": ""
+        },
+        {
+            "Table": "order",
+            "Non_unique": 1,
+            "Key_name": "order_order_id_device_id",
+            "Seq_in_index": 2,
+            "Column_name": "device_id",
+            "Collation": "A",
+            "Cardinality": 16500090,
+            "Sub_part": null,
+            "Packed": null,
+            "Null": "",
+            "Index_type": "BTREE",
+            "Comment": "",
+            "Index_comment": ""
+        },
+        {
+            "Table": "order",
+            "Non_unique": 1,
+            "Key_name": "order_device_id",
+            "Seq_in_index": 1,
+            "Column_name": "device_id",
+            "Collation": "A",
+            "Cardinality": 4125022,
+            "Sub_part": null,
+            "Packed": null,
+            "Null": "",
+            "Index_type": "BTREE",
+            "Comment": "",
+            "Index_comment": ""
+        },
+        {
+            "Table": "order",
+            "Non_unique": 1,
+            "Key_name": "order_device_id",
+            "Seq_in_index": 2,
+            "Column_name": "order_status",
+            "Collation": "A",
+            "Cardinality": 4125022,
+            "Sub_part": null,
+            "Packed": null,
+            "Null": "",
+            "Index_type": "BTREE",
+            "Comment": "",
+            "Index_comment": ""
+        },
+        {
+            "Table": "order",
+            "Non_unique": 1,
+            "Key_name": "order_device_id",
+            "Seq_in_index": 3,
+            "Column_name": "order_id",
+            "Collation": "A",
+            "Cardinality": 16500090,
+            "Sub_part": null,
+            "Packed": null,
+            "Null": "",
+            "Index_type": "BTREE",
+            "Comment": "",
+            "Index_comment": ""
+        },
+        {
+            "Table": "order",
+            "Non_unique": 1,
+            "Key_name": "order_seller_id_order_name",
+            "Seq_in_index": 1,
+            "Column_name": "seller_id",
+            "Collation": "A",
+            "Cardinality": 18,
+            "Sub_part": null,
+            "Packed": null,
+            "Null": "",
+            "Index_type": "BTREE",
+            "Comment": "",
+            "Index_comment": ""
+        },
+        {
+            "Table": "order",
+            "Non_unique": 1,
+            "Key_name": "order_seller_id_order_name",
+            "Seq_in_index": 2,
+            "Column_name": "order_name",
+            "Collation": "A",
+            "Cardinality": 5125,
+            "Sub_part": null,
+            "Packed": null,
+            "Null": "",
+            "Index_type": "BTREE",
+            "Comment": "",
+            "Index_comment": ""
+        },
+        {
+            "Table": "order",
+            "Non_unique": 1,
+            "Key_name": "order_seller_id_create_time",
+            "Seq_in_index": 1,
+            "Column_name": "seller_id",
+            "Collation": "A",
+            "Cardinality": 5899,
+            "Sub_part": null,
+            "Packed": null,
+            "Null": "",
+            "Index_type": "BTREE",
+            "Comment": "",
+            "Index_comment": ""
+        },
+        {
+            "Table": "order",
+            "Non_unique": 1,
+            "Key_name": "order_seller_id_create_time",
+            "Seq_in_index": 2,
+            "Column_name": "create_time",
+            "Collation": "A",
+            "Cardinality": 16500090,
+            "Sub_part": null,
+            "Packed": null,
+            "Null": "",
+            "Index_type": "BTREE",
+            "Comment": "",
+            "Index_comment": ""
+        },
+        {
+            "Table": "order",
+            "Non_unique": 1,
+            "Key_name": "idx_order_status_seller_id_order_id",
+            "Seq_in_index": 1,
+            "Column_name": "order_status",
+            "Collation": "A",
+            "Cardinality": 18,
+            "Sub_part": null,
+            "Packed": null,
+            "Null": "",
+            "Index_type": "BTREE",
+            "Comment": "",
+            "Index_comment": ""
+        },
+        {
+            "Table": "order",
+            "Non_unique": 1,
+            "Key_name": "idx_order_status_seller_id_order_id",
+            "Seq_in_index": 2,
+            "Column_name": "seller_id",
+            "Collation": "A",
+            "Cardinality": 31548,
+            "Sub_part": null,
+            "Packed": null,
+            "Null": "",
+            "Index_type": "BTREE",
+            "Comment": "",
+            "Index_comment": ""
+        },
+        {
+            "Table": "order",
+            "Non_unique": 1,
+            "Key_name": "idx_order_status_seller_id_order_id",
+            "Seq_in_index": 3,
+            "Column_name": "order_id",
+            "Collation": "A",
+            "Cardinality": 16500090,
+            "Sub_part": null,
+            "Packed": null,
+            "Null": "",
+            "Index_type": "BTREE",
+            "Comment": "",
+            "Index_comment": ""
+        },
+        {
+            "Table": "order",
+            "Non_unique": 1,
+            "Key_name": "idx_seller_id_user_id_create_time",
+            "Seq_in_index": 1,
+            "Column_name": "seller_id",
+            "Collation": "A",
+            "Cardinality": 18,
+            "Sub_part": null,
+            "Packed": null,
+            "Null": "",
+            "Index_type": "BTREE",
+            "Comment": "",
+            "Index_comment": ""
+        },
+        {
+            "Table": "order",
+            "Non_unique": 1,
+            "Key_name": "idx_seller_id_user_id_create_time",
+            "Seq_in_index": 2,
+            "Column_name": "user_id",
+            "Collation": "A",
+            "Cardinality": 8250045,
+            "Sub_part": null,
+            "Packed": null,
+            "Null": "",
+            "Index_type": "BTREE",
+            "Comment": "",
+            "Index_comment": ""
+        },
+        {
+            "Table": "order",
+            "Non_unique": 1,
+            "Key_name": "idx_seller_id_user_id_create_time",
+            "Seq_in_index": 3,
+            "Column_name": "create_time",
+            "Collation": "A",
+            "Cardinality": 16500090,
+            "Sub_part": null,
+            "Packed": null,
+            "Null": "",
+            "Index_type": "BTREE",
+            "Comment": "",
+            "Index_comment": ""
+        }
+    ]
+}           
+
+```
+
+这个 SQL 语句每次执行时间因需要计算的数据大小而异，平均时间再 1 分钟，更长会达到 3 分钟或更久。
+
+
+### 问题分析
+
+这个表已经有不少索引了，先不说这些索引的合理性，单从上面的语句来看，应该尽量使用现存的索引来优化查询，使用 explain 语句分析上面的查询输出如下：
+```json
+
+{
+    "data":
+    [
+        {
+            "id": 1,
+            "select_type": "SIMPLE",
+            "table": "order",
+            "type": "range",
+            "possible_keys": "order_seller_order_name,order_seller_id_create_time,idx_order_status_seller_id_order_id,idx_seller_id_user_id_create_time",
+            "key": "order_seller_id_create_time",
+            "key_len": "12",
+            "ref": null,
+            "rows": 22764,
+            "Extra": "Using where"
+        }
+    ]
+}
+```
+
+可以看到上面的语句使用了 `order_seller_id_create_time` 这个索引，这个不难理解，因为 where 子句中用了 seller_id 的等值以及 create_time 的范围，符合最左前缀的要求，按理来说查询应该不是很慢，rows 显示也就只有几万条数据，不算太大，尝试尽量减少数据范围，继续观察对计算时间的影响，做了以下几种修改：
+
+**缩小 create_time 时间范围**
+
+只有当数据明显减少之后计算时间才会缩短
+
+**简化 where 子句的条件**
+
+去掉 user_id 和 partner_id 的删选，尽量简化 where 子句的删选，索引选择依然没有变，但是如果不缩小数据范围，依然很慢。
+
+在做了以上几种尝试之后，初步能得出结论：**慢不在于查询，而在于聚合运算**。
+
+既然索引本身无助于聚合运算，尝试对数据库硬件进行升级，来保证 MySQL 有充分的资源进行计算，虽然查了一圈没有找到特别详细的描述 MySQL 做聚合运算的原理，猜测肯定会用到不少资源。
+
+
+### 方案尝试
+
+#### 方案一
+
+
+原有 MySQL 实例用的是云，6G 内存，ssd 的实例，直接增加内存到 12G，然后直行上面的运算，并没有显著改善
+
+#### 方案二
+
+
+修改 `innodb_buffer_pool_size` 大小从原来的 4G 到 8G，并且更改 `innodb_buffer_pool_instances` 为 2，让每个 buffer_pool 分配 4G 内存，然后直行上面的计算，速度得到显著改善。
+
+
+### 方案总结
+
+
+**提升硬件资源有利于 MySQL 执行聚合运算**，但是最终是有利于 MySQL 把查询索引都缓存了改善了查询，还是改善了聚合计算所需要的资源在这个场景之下都不太好能得出结论，猜测二者都有可能。
+
+
+[`innodb_buffer_pool_size`](https://dev.mysql.com/doc/refman/5.5/en/innodb-parameters.html#sysvar_innodb_buffer_pool_size) 是 MySQL 为执行 MySQL 查询计算所预留的一个缓存区，本质上是越大越好，因为这样的话，MySQL 会把大部分运算直接在内存中执行，`innodb_buffer_pool_instances` 是为了在并发大的时候提升并发读和并发写的，单个 `innodb_buffer_pool_size` 的大小是 innodb_buffer_pool_size/innodb_buffer_pool_instances，官方建议 innodb_buffer_pool_size 最小不要小于 1G。
+
+
+## 案例二：大表 join 查询
+
+
+### 问题描述
+
+两个大表 join 查询，大表 2000 万以上，小表 1500 万以上
+
+```sql
+SELECT order_base.id AS order_base_id, order_base.user_id AS order_base_user_id
+FROM order_base INNER JOIN order ON order_base.id = order.order_id
+WHERE order.seller_id = 96691 AND order_base.paid_time >= '2015-10-03T16:43:07' AND order_base.paid_time < '2018-11-12T16:43:07' AND order_base.paid = 1 AND order.partner_id NOT IN (105203908, 105203916, 105203958, 105203910) ORDER BY order_base.order_id DESC
+ LIMIT 10;
+
+```
+
+order_base 索引如下:
+```json
+{
+    "data":
+    [
+        {
+            "Table": "order_base",
+            "Non_unique": 0,
+            "Key_name": "PRIMARY",
+            "Seq_in_index": 1,
+            "Column_name": "id",
+            "Collation": "A",
+            "Cardinality": 20935372,
+            "Sub_part": null,
+            "Packed": null,
+            "Null": "",
+            "Index_type": "BTREE",
+            "Comment": "",
+            "Index_comment": ""
+        },
+        {
+            "Table": "order_base",
+            "Non_unique": 0,
+            "Key_name": "order_id",
+            "Seq_in_index": 1,
+            "Column_name": "order_id",
+            "Collation": "A",
+            "Cardinality": 20935372,
+            "Sub_part": null,
+            "Packed": null,
+            "Null": "",
+            "Index_type": "BTREE",
+            "Comment": "",
+            "Index_comment": ""
+        },
+        {
+            "Table": "order_base",
+            "Non_unique": 1,
+            "Key_name": "uuid",
+            "Seq_in_index": 1,
+            "Column_name": "uuid",
+            "Collation": "A",
+            "Cardinality": 20935372,
+            "Sub_part": null,
+            "Packed": null,
+            "Null": "",
+            "Index_type": "BTREE",
+            "Comment": "",
+            "Index_comment": ""
+        },
+        {
+            "Table": "order_base",
+            "Non_unique": 1,
+            "Key_name": "idx_order_base_user_id_id",
+            "Seq_in_index": 1,
+            "Column_name": "user_id",
+            "Collation": "A",
+            "Cardinality": 6978457,
+            "Sub_part": null,
+            "Packed": null,
+            "Null": "",
+            "Index_type": "BTREE",
+            "Comment": "",
+            "Index_comment": ""
+        },
+        {
+            "Table": "order_base",
+            "Non_unique": 1,
+            "Key_name": "idx_order_base_user_id_id",
+            "Seq_in_index": 2,
+            "Column_name": "id",
+            "Collation": "A",
+            "Cardinality": 20935372,
+            "Sub_part": null,
+            "Packed": null,
+            "Null": "",
+            "Index_type": "BTREE",
+            "Comment": "",
+            "Index_comment": ""
+        },
+        {
+            "Table": "order_base",
+            "Non_unique": 1,
+            "Key_name": "idx_order_base_user_id_order_id",
+            "Seq_in_index": 1,
+            "Column_name": "user_id",
+            "Collation": "A",
+            "Cardinality": 20935372,
+            "Sub_part": null,
+            "Packed": null,
+            "Null": "",
+            "Index_type": "BTREE",
+            "Comment": "",
+            "Index_comment": ""
+        },
+        {
+            "Table": "order_base",
+            "Non_unique": 1,
+            "Key_name": "idx_order_base_user_id_order_id",
+            "Seq_in_index": 2,
+            "Column_name": "order_id",
+            "Collation": "A",
+            "Cardinality": 20935372,
+            "Sub_part": null,
+            "Packed": null,
+            "Null": "",
+            "Index_type": "BTREE",
+            "Comment": "",
+            "Index_comment": ""
+        },
+        {
+            "Table": "order_base",
+            "Non_unique": 1,
+            "Key_name": "idx_order_base_user_id_create_time",
+            "Seq_in_index": 1,
+            "Column_name": "user_id",
+            "Collation": "A",
+            "Cardinality": 10467686,
+            "Sub_part": null,
+            "Packed": null,
+            "Null": "",
+            "Index_type": "BTREE",
+            "Comment": "",
+            "Index_comment": ""
+        },
+        {
+            "Table": "order_base",
+            "Non_unique": 1,
+            "Key_name": "idx_order_base_user_id_create_time",
+            "Seq_in_index": 2,
+            "Column_name": "create_time",
+            "Collation": "A",
+            "Cardinality": 20935372,
+            "Sub_part": null,
+            "Packed": null,
+            "Null": "",
+            "Index_type": "BTREE",
+            "Comment": "",
+            "Index_comment": ""
+        },
+        {
+            "Table": "order_base",
+            "Non_unique": 1,
+            "Key_name": "idx_order_base_paid_time",
+            "Seq_in_index": 1,
+            "Column_name": "paid_time",
+            "Collation": "A",
+            "Cardinality": 20935372,
+            "Sub_part": null,
+            "Packed": null,
+            "Null": "",
+            "Index_type": "BTREE",
+            "Comment": "",
+            "Index_comment": ""
+        }
+    ]
+}
+```
+
+order 表索引同 **案例一**。
+
+如果最终没有数据满足条件，这个 SQL 语句非常慢，如果有数据满足条件，速度也不算特别理想。
+
+
+### 问题分析
+
+使用 explain 语句可以看到如下输出：
+```json
+{
+    "data":
+    [
+        {
+            "id": 1,
+            "select_type": "SIMPLE",
+            "table": "order",
+            "type": "index",
+            "possible_keys": "order_order_id_device_id,order_seller_id_order_name,seller_id_create_time,idx_seller_id_user_id_create_time",
+            "key": "order_order_id_device_id",
+            "key_len": "12",
+            "ref": null,
+            "rows": 473,
+            "Extra": "Using where"
+        },
+        {
+            "id": 1,
+            "select_type": "SIMPLE",
+            "table": "order_base",
+            "type": "eq_ref",
+            "possible_keys": "PRIMARY,idx_order_base_paid_time",
+            "key": "PRIMARY",
+            "key_len": "4",
+            "ref": "martin_order.order.order_id",
+            "rows": 1,
+            "Extra": "Using where"
+        }
+    ]
+}
+
+```
+
+关于 explain 语句的输出，详见 [mysql-explain](/blog/mysql-explain)，这里可以明显看到表 order 中的 ref 是 null，type 是 index，也就是是一个索引扫描，也就是说 **order 表可能使用了一个不合理的索引 `order_order_id_device_id` 从而造成了 order 需要进行全索引扫描，这是非常糟糕的索引选择类型，这有可能是造成查询慢的原因之一**。
+
+表 order_base 用的 type 是 eq_ref，意味着 order_base 使用的是唯一性索引或者 primary key，从上不能看出是 primary key，性能较好。
+
+
+### 方案尝试
+
+order 表有很多索引，在这个 join 语句的 where 子句中 order 表主要使用了 seller_id 和 partner_id，已经存在的索引中只有 `order_seller_id_create_time` 满足场景，因而可以在 join 的时候强制表 order 走这个索引：
+
+
+```sql
+SELECT order_base.id AS order_base_id, order_base.user_id AS order_base_user_id
+FROM order_base INNER JOIN order force index(order_seller_id_create_time) ON order_base.id = order.order_id
+WHERE order.seller_id = 96691 AND order_base.paid_time >= '2015-10-03T16:43:07' AND order_base.paid_time < '2018-11-12T16:43:07' AND order_base.paid = 1 AND order.partner_id NOT IN (105203908, 105203916, 105203958, 105203910) ORDER BY order_base.order_id DESC
+ LIMIT 10;
+```
+
+再使用 explain 输出如下：
+
+```json
+{
+    "data":
+    [
+        {
+            "id": 1,
+            "select_type": "SIMPLE",
+            "table": "order",
+            "type": "ref",
+            "possible_keys": "order_seller_id_create_time",
+            "key": "order_seller_id_create_time",
+            "key_len": "4",
+            "ref": "const",
+            "rows": 348810,
+            "Extra": "Using where; Using filesort"
+        },
+        {
+            "id": 1,
+            "select_type": "SIMPLE",
+            "table": "order_base",
+            "type": "eq_ref",
+            "possible_keys": "PRIMARY,idx_order_base_paid_time",
+            "key": "PRIMARY",
+            "key_len": "4",
+            "ref": "martin_order.order.order_id",
+            "rows": 1,
+            "Extra": "Using where"
+        }
+    ]
+}
+
+```
+
+可以看到表 order 的 type 已经是 ref，表示使用了一个非唯一性索引或者是满足最左前缀的索引，而且 ref 已经成了 const，是非常好的索引选择。
+
+在 join 查询中，需要 match 的总行数是各个表 explain output 中 rows 的乘机，虽然说更改之后表 order 的 rows 明显增多，但是能够合理使用索引，还是明显改善查询速度，优化后的 SQL 语句基本是秒查。
+
+
+**update**
+
+上述优化对于 `order_base.paid = 1` 这个条件删选出的数据如果比较少时确实很快，10 万以下，但是如果非常多还是很慢，后来发现 order 表也有一个类似的 paid 状态，相对来说数据要少很多，换成 `order.order_status='paid'` 会有显著改善，也就是说上述 SQL 语句在不同的查询量级的情况下使用不同的方案更合适。
+
+
+
+## 小结
+
+MySQL 的慢查询大多都集中在索引使用不合理，对 MySQL 的索引原理要有深入理解才能准确定位问题，而且 MySQL 的性能问题是多方面的，有硬件也有数据的影响，要多方面综合考虑。
+

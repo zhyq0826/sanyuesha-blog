@@ -1,0 +1,44 @@
+---
+title: "让 turbo 支持异步调用 MongoDB"
+summary: "turbo-motor 是为了支持 turbo 异步调用 MongoDB而实现的，完全兼容 turbo ORM 层的 API，并且封装了 motor 这一支持在 tornado 中异步调用 MongoDB 的库。"
+date: "2018-04-11"
+group: "turbo"
+---
+
+
+[turbo-motor](https://github.com/wecatch/turbo-motor) 是为了支持 turbo 异步调用 MongoDB而实现的，完全兼容 turbo ORM 层的 API，并且封装了 [motor](https://motor.readthedocs.io/en/stable/tutorial-tornado.html) 这一支持在 tornado 中异步调用 MongoDB 的库。
+
+由于 motor 是异步执行，这就需要在 turbo 的 handler 中，其实也就是 tornado 的 web.RequestHandler 中要进行异步，像这样：
+
+```python
+class AsynHandler(BaseHandler):
+
+    @tornado.gen.coroutine
+    def get(self):
+        result = yield user_model.Tag().find_many(limit=10)
+        self.render('tag.html', result=result)
+```
+
+异步的装饰器 `@tornado.gen.coroutine` 必不可少，在这里 Tag 这个 model 是一个使用 turbo_motor 提供的封装了 motor 调用的 model，实现它也很简单：
+
+```python
+class Tag(MotorModel):
+
+    """
+    name: tag name
+    atime: added time
+    """
+    name = 'tag'
+
+    field = {
+        'name': (str, ''),
+        'atime': (datetime, None),
+    }
+```
+
+其中 MotorModel 是 [turbo_motor.model.BaseModel](https://github.com/wecatch/turbo-motor/blob/master/turbo_motor/model.py#L14) 的子类，它实现了异步调用 MongoDB 所有的 API。
+
+如上所述，想在 turbo 的应用中使用 motor，只要引入 turbo_motor 这个插件即可，然后应用的 handler 处理方法写成异步的。
+
+完整示例参考 turbo 提供的 demo 中的 [AsynHandler](https://github.com/wecatch/app-turbo/blob/master/demos/app-server/apps/app/app.py#L22) 
+

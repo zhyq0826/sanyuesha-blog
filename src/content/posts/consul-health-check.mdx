@@ -1,0 +1,96 @@
+---
+title: "Consul 健康检查"
+summary: "之前的文章已经让我们知道搭建 consul 的集群比较简单，今天我们来继续我们的系列，使用 consul 进行 health check。"
+date: "2018-05-16"
+tags: 
+  - "health check"
+  - "consul"
+group: "consul"
+---
+
+
+之前的文章已经让我们知道搭建 consul 的集群比较简单，今天我们来继续我们的系列，使用 consul 进行 health check。
+
+开始之前，你需要准备我们在前面文章中已经搭建好的 cluster。
+
+## 定义 checks
+
+同定义 service 一样，定义 checks 可以通过配置或者调用 HTTP API 来实现，在此我们之前一样使用配置文件来实现，这是最通用的做法。
+
+在 consul 0.9 之后，agent 必须配置 `enable_script_checks` 为 true 来允许 script checks。
+
+在第二个节点上创建两个定义文件：
+```shell
+vagrant@n2:~$ echo '{"check": {"name": "ping",
+  "args": ["ping", "-c1", "google.com"], "interval": "30s"}}' \
+  >/etc/consul.d/ping.json
+
+vagrant@n2:~$ echo '{"service": {"name": "web", "tags": ["rails"], "port": 80,
+  "check": {"args": ["curl", "localhost"], "interval": "10s"}}}' \
+  >/etc/consul.d/web.json
+
+```
+这里我们定义了一个 ping 的 host check，这个 check 每 30s 执行一次 `ping -c1 google.com`命令。基于 script 的 health check 执行命令时的 user 和 开启 consul 进程是同一个。如果检测程序退出时的 code >= 2，这次检测会被标记为 failing，这个服务也被认为是不健康的 unhealthy。**这个规则适用任何 script-base 的 health check**。
+
+第二个命令定义了一个服务 web，并且每 10s 进行一次 curl 检查来确保服务仍然可用。
+
+重新启动 consul 来加载刚才的定义：
+```shell
+2018/05/16 11:32:16 [INFO] agent: Synced check "ping"
+2018/05/16 11:32:22 [WARN] agent: Check "service:web" is now critical
+2018/05/16 11:32:32 [WARN] agent: Check "service:web" is now critical
+2018/05/16 11:32:35 [WARN] agent: Check "ping" is now warning
+2018/05/16 11:32:35 [INFO] agent: Synced check "ping"
+```
+从输出结果我们不难看出，ping 现在是警告状态，service:web 报严重错误，由于 google 被墙所以 ping 会超时，端口在 80 的 web 服务我们本地根本没有开启。
+
+## 获取 checking 状态
+
+可以通过 API 来获取有关 health check 的运行状态：
+```shell
+vagrant@n1:~$ curl http://localhost:8500/v1/health/state/critical
+[{
+    "Node": "agent-two",
+    "CheckID": "service:web",
+    "Name": "Service 'web' check",
+    "Status": "critical",
+    "Notes": "",
+    "Output": "  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current\n                                 Dload  Upload   Total   Spent    Left  Speed\n\r  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0curl: (7) Failed to connect to localhost port 80: Connection refused\n",
+    "ServiceID": "web",
+    "ServiceName": "web",
+    "ServiceTags": ["rails"],
+    "Definition": {},
+    "CreateIndex": 557,
+    "ModifyIndex": 594
+}]
+```
+为了证实我们获取的结果，可以使用 DNS 查询查看 web 服务的：
+```shell
+vagrant@n1:~$ dig @127.0.0.1 -p 8600 web.service.consul
+; <<>> DiG 9.9.5-9+deb8u14-Debian <<>> @127.0.0.1 -p 8600 web.service.consul
+; (1 server found)
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NXDOMAIN, id: 63358
+;; flags: qr aa rd; QUERY: 1, ANSWER: 0, AUTHORITY: 1, ADDITIONAL: 1
+;; WARNING: recursion requested but not available
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 4096
+;; QUESTION SECTION:
+;web.service.consul.        IN  A
+
+;; AUTHORITY SECTION:
+consul.         0   IN  SOA ns.consul. hostmaster.consul. 1526471396 3600 600 86400 0
+
+;; Query time: 0 msec
+;; SERVER: 127.0.0.1#8600(127.0.0.1)
+;; WHEN: Wed May 16 11:49:55 GMT 2018
+;; MSG SIZE  rcvd: 97
+```
+
+可以看到没有返回正确的状态，因为服务已经不可用了。
+
+## 参考资料
+
+- https://www.consul.io/intro/getting-started/checks.html

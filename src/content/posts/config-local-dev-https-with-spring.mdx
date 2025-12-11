@@ -1,0 +1,121 @@
+---
+title: "配置浏览器信任的 Spring boot https 开发环境"
+summary: "日常大多数前端使用的都是 Chrome 浏览器，由于安全策略的限制，Chrome 不允许在 https 环境之下访问非 https 的资源，包括静态资源和非静态 http 请求，会报 错误，因此为了让前端同学可以在日常的环境中和后端同学联合调试就需要一套可信任的 https 环境..."
+date: "2021-12-04"
+tags: 
+  - "java"
+  - "https"
+group: "Java"
+---
+
+
+日常大多数前端使用的都是 Chrome 浏览器，由于安全策略的限制，Chrome 不允许在 https 环境之下访问非 https 的资源，包括静态资源和非静态 http 请求，会报 `Mixed Content blocked` 错误，因此为了让前端同学可以在日常的环境中和后端同学联合调试就需要一套可信任的 https 环境，最终状态是通过自定义域名访问 http 服务事浏览器会显示证书安全的标志，如下访问 freecodecamp.org 一样
+
+![](https://static.git-star.com/WX20211204-140412@2x.png)
+
+本文详细记录了配合 Spring boot 在 Mac 下搭建一套浏览器信任的 https 环境的全部工作，我们假设本地要使用的域名是 `dev.com`
+
+## 生成自签名证书
+
+生成一个 RSA-2048 的 key ，用来生成 Root SSL certificate，生成过程中根据提示输入密码，这个密码在后续使用过程中会用到，所谓根证书就是权威机构颁发的证书，详细含义见 [What is a Root SSL Certificate?](https://support.dnsimple.com/articles/what-is-ssl-root-certificate/)
+
+```bash
+openssl genrsa -des3 -out rootCA.key 2048
+```
+
+然后用这个 key 生成根证书，这个证书的有效期是 1024 天，可以根据自己的需要变更。
+
+```bash
+openssl req -x509 -new -nodes -key rootCA.key -sha256 -days 1024 -out rootCA.pem
+```
+
+## 让 Mac 信任证书
+
+打开 Mac 的钥匙串 App，导入生成的 `rootCA.pem` 
+
+<img src="https://static.git-star.com/WX20211204-143101@2x.png" style="zoom:50%;" />
+
+
+
+然后双击导入的证书进行编辑，改写信任->当使用证书一览:始终信任
+
+<img src="https://static.git-star.com/WX20211204-143405@2x.png" style="zoom:50%;" />
+
+
+
+## 为域名 dev.com 签发证书
+
+创建 server.csr.cnf 文件，输入以下内容
+
+```bash
+[req]
+default_bits = 2048
+prompt = no
+default_md = sha256
+distinguished_name = dn
+
+[dn]
+C=US
+ST=RandomState
+L=RandomCity
+O=RandomOrganization
+OU=RandomOrganizationUnit
+emailAddress=hello@dev.com
+CN = dev.com
+```
+
+创建一个 v3.ext 文件，输入以下内容
+
+```bash
+authorityKeyIdentifier=keyid,issuer
+basicConstraints=CA:FALSE
+keyUsage = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment
+subjectAltName = @alt_names
+
+[alt_names]
+DNS.1 = dev.com
+```
+
+使用 `server.csf.cnf` 文件为 dev.com 创建一个certificate  key 保存为 `server.key` 文件
+
+```bash
+openssl req -new -sha256 -nodes -out server.csr -newkey rsa:2048 -keyout server.key -config <( cat server.csr.cnf )
+```
+
+接着生成 certificate signing request 文件 `server.crt` 
+
+```bash
+openssl x509 -req -in server.csr -CA rootCA.pem -CAkey rootCA.key -CAcreateserial -out server.crt -days 500 -sha256 -extfile v3.ext
+```
+
+## 配置 spring boot 的 https 
+
+Java 提供了 [keytool](https://docs.oracle.com/javase/8/docs/technotes/tools/unix/keytool.html) 工具为 Java 程序生成对应的 https 证书，其格式是 JKS 或 PKCS12，在这里我们在 Spring boot 中 使用 PKCS12 格式，在上面的我们已经为 dev.com 生成了对应的证书，再此我们可以使用 keytool 工具进行转换为 PKCS12 
+
+```bash
+openssl pkcs12 -export -out springboot.p12 -inkey server.key -in server.crt
+```
+
+把 `springboot.p12`拷贝到 Spring 项目的 resource 下，配置 Spring 的 `application.yaml` 或 `application.properties`
+
+```yaml
+server:
+  ssl:
+    key-store: classpath:springboot.p12
+    key-store-password: password
+    key-store-type: pkcs12
+    key-password: password
+  port: 443
+```
+
+
+
+启动 Spring 程序，配置 dev.com 指定到本地 127.0.0.1 即可完成访问
+
+
+
+## 参考
+
+- https://www.thomasvitale.com/https-spring-boot-ssl-certificate/
+- https://www.freecodecamp.org/news/how-to-get-https-working-on-your-local-development-environment-in-5-minutes-7af615770eec/
+

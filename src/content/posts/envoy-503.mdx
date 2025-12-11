@@ -1,0 +1,60 @@
+---
+title: "istio 网关 envoy 503 问题总结"
+summary: "### 问题起因"
+date: "2019-10-22"
+group: "未分组"
+---
+
+
+### 问题起因
+
+公司云上服务报在做灰度部署的时候报 503 问题，经过多日的定位于排查终于理清了 503 的来龙去脉。
+
+### 背景技术
+
+我司云上服务用的是 istio 做的网关，而 [istio]([https://istio.io](https://istio.io/)默认又用的是 [envoy](https://www.envoyproxy.io/) 做的代理，istio 作为一个 [service mesh](https://www.redhat.com/en/topics/microservices/what-is-a-service-mesh) 的存在，天然对流量管控很擅长，结合 k8s 非常容易实现灰度发布、蓝绿发布。
+
+### http 协议的 503 状态码
+
+假设任何主动发起连接的一方是 client，任何被动接受连接的一方是 server，503 表示 server 服务能力出现了问题，也就是说 503 是 server 端告知的 client 的一种状态，server 此时至少还有连接的能力，并且告知连接他的 client 503。有些时候如果 server 的负载过高，也有可能不会发送 503 的状态，而是直接拒绝连接。
+
+### 什么时候 istio 网关会报 503
+
+明确 503 的具体含义，我们来一起分析一下 istio 网关的 503。
+
+![](https://static.git-star.com/request-path-istio.jpg)
+
+首先明确这里的网关实际是指流量从外部进入 k8s 集群的入口，也就是 k8s 的边缘节点，因而实际上能感知到网关 503 的是下游服务 downstream ，也就是连接网关的应用程序，此时网关作为 server 为 downstream 提供服务，**1. 如果网关负载过高，连接超时，对 downsream 服务报就会 503 或者直接拒绝 downstream 的连接请求**。
+
+网关作为 k8s 集群的流量出入口，是 downstream 和 upstream 的中转站，而这里 upstream 就是指 k8s 集群内部 Pod 中的应用程序。如果应用程序出现不可用，upstream 就会对网关报 503或者直接拒绝网关的请求，此时 upstream 是 server，网关是 client，这个时候网关对连接他的 downstream 如何处理？报 503。这是 503 的 case 之二：**2. k8s 集群内的应用程序负载过高，对网关报 503或者拒绝网关连接，网关把这个信息以 503 形式传递给 downstream**。
+
+还有一种情况是，**3. 如果请求正在被 upstream 处理，这个时候由于意外情况关闭了 upstream 服务**，此时网关收到的是类似 `upstream connect error or disconnect/reset before headers`  的错误，连接被中断，此时对网关也会把这种情况以 503 的形式报给 downstream ，这是 case 之三。
+
+以上三种是 istio 网关 503 情况最常见的三种情形，还有一种是更新 istio 规则之后由于规则同步需要时间，导致规则生效的间隙可能会有 503 的情况出现，这个不在此文中细表。
+
+### istio 网关灰度部署 503 问题的本质
+
+我司遇到 503 是灰度发布的时候，而灰度发布是借由 istio 的提供的带权重的流量切换机制实现的，就是建立多个 subset，不同的 subset weight 不同。在继续深入之前，这里有必须稍微讲讲 envoy 的几个核心概念以及其作为 k8s 边缘节点入口网关是如何做灰度发布的。
+
+istio 实现了一套 [xDS](https://www.servicemesher.com/istio-handbook/data-plane/envoy-xds-protocol.html) 的协议，借助这套协议，istio 可以对 k8s API server 进行监控，一旦发现上游 k8s service 有新的 Pod 加入，就会把这个信息发送到网关的 envoy，envoy 收到这个信息之后就会更新它的 [cluster](https://www.servicemesher.com/istio-handbook/data-plane/envoy-terminology.html)，cluster 就是 envoy 的 upstream，envoy 把 [route](https://www.servicemesher.com/istio-handbook/data-plane/envoy-terminology.html) 的流量通过 [host](https://www.servicemesher.com/istio-handbook/data-plane/envoy-terminology.html) 以及一些其他流量匹配规则分发给对应的 cluster。假设有 host 是 www.sanyuesha.com ，route 配置的流量规则是所有请求这个 host 流量都由 cluster A 负责，而 cluster A 是由 k8s 集群满足 A.default.svc.cluster.local 的服务提供的，这个服务对应的 Pod 是 a1 和 a2:
+
+![](https://static.git-star.com/istio-route-rule1.png)
+
+
+
+在未进行权重分配流量之前，所有流量都根据对应负载均衡算法分配到所有的 Pod，istio 提供了 subset 的机制来对流量进行权重分配，而这个机制的实现其实就是使用 Pod 的 label 进行筛选形成两组不通的 cluster 的过程。
+
+![](https://static.git-star.com/istio-route-rule2.png)
+
+灰度部署就是对相同的 service 不同的 Pod 进行版本区分，逐步切换流量的过程。为了实现灰度部署，首先要对 Pod 进行版本区分，不同 Pod 打上不同的标签，然后告诉 envoy 建立两个不同的 cluster 来实现流量的版本切分。流量通过这种方式一点点从老版本切换到新版本，等全部切换完成之后，释放掉老版本占用的资源。But! 在最后释放资源时，这里就有一个很 tricky 的问题。
+
+对于旧的 Pod 资源来说，如果没有了流量本来是可以删除的，但是为了减少 envoy 中的 route 规则(规则多了会造成网关 CPU 负载变高)，我们也对envoy的virtualservice进行了清理，也就是把subset删除，恢复成默认的没有 subset 的 virtualservice，这个时候 envoy 指向的后端的 cluster 就是 A.default.svc.cluster.local 指向的所有的 Pod。问题就在于清理 subset 和清理 Pod 的顺序我们在实现灰度部署时没有在意。
+
+如果先清理 subset，此时流量会流向 A.default.svc.cluster.local 所指向的所有 Pod，也就是旧的 Pod 就会重新接管流量，此时再删除 Pod 肯定会报 503。
+
+如果先清理 Pod，网关会感知到 Pod 不健康从而把已经没有流量的旧 Pod 节点从 cluster 中摘除，此时再清理 subset，则不会有 503 出现。
+
+### 总结
+
+使用 istio 做灰度部署切流量的时候要重点注意规则切换和 Pod 资源清理的顺序，还有一种解决灰度流量切换的方法是始终使用两个 subset：v1 和 v2，每次部署使用这两个 subset 做新老版本交替切换流量。
+

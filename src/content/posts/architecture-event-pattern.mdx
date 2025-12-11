@@ -1,0 +1,72 @@
+---
+title: "架构的设计模式：事件驱动"
+summary: "### 概念"
+date: "2020-06-29"
+tags: 
+  - "架构"
+  - "设计模式"
+group: "技术"
+---
+
+
+### 概念
+
+事件驱动架构是一种分布式的异步架构模式，是解耦复杂系统组件的一种处理手段。这种架构模式主要包含两种实施方式，一种是集中式的，一种是非集中式的。
+
+### 集中式架构
+
+<img src="https://static.git-star.com/0_aqkwbPRXOJHQTdFL.png" style="zoom:50%;" />
+
+其包含了 event mediator、event channel、event queue、event processor 这些组件，理解 event mediator 是理解这种架构的关键。Event mediator 直译为事件中间处理器，也就是说这个组件是一个事件中枢处理单元，既然是中枢作用也就是这个组件知道事件的处理流程，但是他不执行具体的事件业务处理逻辑，举例来说 event mediator 在接受到 initial event 之后（在集中式模式中，有两种事件类型，一种是 initial event，一种是 processing event，initial event 是 event mediator 接受的原始事件，processing event 是由 event mediator 分发并且由 event processor 处理的事件），会根据事件的特征对事件进行拆分，形成不同的更小单元的 processing event ，这些事件之间没有明显的顺序依赖，各自独立，然后经过不同的 event channel 发送到不同的 event processor。
+
+Event processor 是一组各自独立的组件，他们彼此之间没有依赖，也就是**他们处理 processing event 的逻辑是自包含的，不依赖于其他 processor 的处理结果**，这是他们的显著特征。
+
+集中式的工作模式可以以一个处理保险流程的例子来说明如图：
+
+<img src="https://static.git-star.com/sapr_0202.png" style="zoom:50%;" />
+
+Event mediator 在接受到一个 relocation event 原始事件之后，拆分成 change address、recalc quote、update cliams 等 processing event，这些 event 彼此独立，经由各自的 event channel 发送到 不同的 event processor 处理。
+
+### 非集中式架构
+
+
+
+<img src="https://static.git-star.com/0_iGkuegluZ0UhcRGC.png" style="zoom:50%;" />
+
+这种模式主要由 event processor 和 event channel 构成，较为简单，但是不同于集中式，这种模式的**事件可能彼此是相互关联的**，比如一个 event processor 的处理结果是另一个 event processor 的需要消费的事件，整个事件处理过程像一条彼此相扣的链条。
+
+同样以处理保险的为例来说明这种模式的工作流程：
+
+<img src="https://static.git-star.com/sapr_0204.png" style="zoom:50%;" />
+
+图中明显可以观察到，当 change address 完成后产生的 event 会被 quote process 和 claims process 接收并处理，同样他们的处理结果又分别被 notification process 和 adjustment process 接受，整个过程就像是接力赛跑，每个 processor 必须要完成自己的工作其他 processor 才能开始执行，整个处理过程像链条一样，只有整个流程结束才能形成一个完整的业务逻辑。
+
+### 权衡
+
+事件驱动架构模式是较为复杂的，他涉及了多个分布式系统之间的交互，系统之间的稳定调用、业务的延迟敏感性等都是要必须考量的因素，尤其是在业务逻辑拆分成多个分布式执行单元之后，他们不再是一组完整的原子执行单元，而变成了分布式事务，这也加剧了这种架构模式的设计难度。因而在设计这种架构时，event 是否能够独立完成，是否要依赖于其他事件，是否是一组无法分割的事务单元都在影响着事件的拆分粒度。
+
+### 事件架构的度量
+
+**agility**
+
+各个组件彼此独立，耦合性低，彼此变更而不相互影响，敏捷性强
+
+**deployment**
+
+非集中式架构部署相对容易，组件的依赖程度较低，集中式架构相对较难，各个 processor 都依赖 event mediator
+
+**testability**    
+
+复杂分布式系统难以测量
+
+**performance**
+
+虽然各个组件之间的消息传递的成本需要考虑，但是由于业务逻辑分拆成多个小单元异步执行，整体性能提升较为明显
+
+**scalability**
+
+组件独立，scale out 容易，尤其是 processor 
+
+**development**
+
+分布式系统，天然特征，开发难，测试难

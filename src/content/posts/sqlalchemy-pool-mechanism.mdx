@@ -1,0 +1,96 @@
+---
+title: "SQLAlchemy 的连接池机制"
+summary: "SQLAlchemy 自身提供了连接池来管理所有和 database 的连接，pacakge 是 ，简单来说 connection pool 就是一种复用连接的机制，工作流程如下："
+date: "2019-01-02"
+tags: 
+  - "连接池"
+group: "SQLAlchemy"
+---
+
+
+SQLAlchemy 自身提供了连接池来管理所有和 database 的连接，pacakge 是 `sqlalchemy.pool` ，简单来说 connection pool 就是一种复用连接的机制，工作流程如下：
+
+![](https://static.git-star.com/a0b501e5016ede9ad1ff0a2bb23036a0.jpg)
+
+
+从 pool 中获取新的连接，如果没有就创建一个新的连接并返回，在调用连接的 close 之后，连接不会真正的关闭而是返回 pool 供下次使用，过程比较简单，但是在实际实现 pool 的过程中需要考虑很多细节性的东西，下面我们一一来说说 sqlalchemy 的 pool 机制。
+
+
+## Pool 的使用
+
+SQLAlchemy 默认在使用 create_engine 创建新的 engine 时提供了一个 QueuePool，而且可以指定 Pool 的一些属性，包括 pool_size、max_overflow、pool_recycle 等：
+```python
+engine = create_engine('postgresql://me@localhost/mydb',
+                       pool_size=20, max_overflow=0)
+```
+
+- pool_size pool 的大小
+- max_overflow 允许超过 pool_size 多少
+- pool_recycle 设置 DBAPI connection 存活多久断开
+- pool_timeout 从 pool 中获取新的连接等待时间，一般是指等待 pool 中连接可用的时间
+
+
+除了指定 pool 的一些属性之外，create_engine 允许自定义 pool 的实现，只要接口符合 `lib/sqlalchemy/pool/base.py` 中规定的 Pool 即可，这个参数是 create_engine 的 poolclass。
+
+从 pool 中获取一个新的 connection：
+```python
+conn = engine.connect()
+```
+
+归还 connection 到 pool 中：
+```python
+conn.close()
+```
+
+`conn` 是一个实现了 proxy 模式的对象，目的是在 close 时不是真正关闭 connection 而是归还到 pool 中，而且即使没有调用 close 方法，conn 对象在进行 garbage collected 时也会归还到 pool 中。
+
+在执行 close 方法时，需要对该连接进行一些清理工作以保证该连接下次能够正确工作，比如是否 connection 上的锁等等，
+
+## Pool 的事件
+
+SQLAlchemy 默认提供了一些列的 hook 用于处理 connection 在创建时、获取 connection 时、归还 connection 时等等，见[PoolEvents](https://docs.sqlalchemy.org/en/latest/core/events.html#sqlalchemy.events.PoolEvents)。
+
+## 处理失效 connection 的机制
+
+SQLAlchemy 提供了两种处理连接失效的机制，一种是悲观的，一种是乐观的。
+
+
+### 悲观机制
+
+悲观机制是指在每次获取新的 connection 供 application 使用之前，都在 connection 上进行一个简单的测试，比如发送一条简单的 `select 1` 语句以测试当前 database 是否可用，虽然该检测机制会造成一些额外的开销，但确实一种简单可靠能并且能及时发现 database 可用性的机制。
+
+需要注意的是即使采用了预检测机制，也没有办法杜绝在 transaction 执行当中由于 database 发生故障造成的影响，也就是说如果一个 transaction 正在执行过程中，此时由于 database 故障了，transaction 可能会丢失，这类错误还是需要依靠 application 来解决。
+
+Pool 的预检测发生在获取新的 connection 时，通过配置 `Pool.pre_ping` 来实现，体现在 create_engine 上是 `pool_pre_ping` 参数：
+```python
+engine = create_engine("mysql+pymysql://user:pw@host/db", pool_pre_ping=True)
+```
+
+如果预检测发现 connection 不可用，当前 connection 会立马被回收，而且在 pool 中创建时间小于当前 connection 的所有 connection 都会被回收。
+
+
+
+### 乐观机制
+
+
+不同于悲观机制，乐观机制是指只在 connection 执行过程中检测 database 是否故障，如果 connection 在执行 transaction 过程中 raise 出 `disconnect` 事件，则会调用 `Pool.recreate()` 把 pool 中所有还未被使用的 connection 全部失效，并且从新的 pool 中创建一个新的 connection 并返回。
+
+同样的，application 需要自己去处理事务执行过程中 connection 中断的情况。
+
+
+### 另一个回收连接的选择 recycle 
+
+此外 SQLAlchemy 还提供了 recyle 的机制来处理连接过久的 connection，如果一个 connection 占用时间太长超过了 pool_recyle 设置的时间，pool 会自动失效该连接。
+
+```python
+from sqlalchemy import create_engine
+e = create_engine("mysql://scott:tiger@localhost/test", pool_recycle=3600)
+
+```
+
+**需要注意的是 pool 根据 pool_recyle 设置失效时间只会发生在获取新的 connection 的时候。**
+
+
+## 允许应用程序真正关闭连接
+
+不论是 Session 还是 engine，以及 engine 创建的 Connection，都提供了一个 `invalidate` 方法用来关闭底层 DBAPI 的 connection 的机制，也就是说应用程序有权决定是否真正关闭底层连接的权利。

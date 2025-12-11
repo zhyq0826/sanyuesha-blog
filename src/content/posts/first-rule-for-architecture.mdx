@@ -1,0 +1,152 @@
+---
+title: "无处不在的架构"
+summary: "## 概念"
+date: "2017-05-03"
+tags: 
+  - "架构"
+group: "程序人生"
+---
+
+
+## 概念
+
+### Architecture
+
+Architecture is both the process and the product of planning, designing, and constructing buildings and other physical structures. —— From wiki https://en.wikipedia.org/wiki/Architecture。
+
+Architecture 意在计划、设计、构建建筑物的过程。
+
+### Software architecture
+
+Software architecture refers to the high level structures of a software system, the discipline of creating such structures, and the documentation of these structures…..The architecture of a software system is a metaphor, analogous to the architecture of a building.—— From wiki https://en.wikipedia.org/wiki/Software_architecture
+
+software architecture 和构建一座实体建筑是非常相似的，都具有计划、设计、构建的过程。
+
+{/* more */}
+
+## 软件架构关注什么
+
+**Software architecture is about making fundamental structural choices which are costly to change once implemented.**
+
+wiki 的这句话恰如其分的解释了软件架构需要关注的：软件架构就是在做选择，而这些选择一旦实施，其改变成本相对较高。
+
+
+## 哪些地方需要架构
+
+不只有那些 high level 层面的东西才需要架构，在软件的整个生命周期中，架构几乎都有体现。
+
+需求的提取和抽象，application 的部署，project package 的组织和命名，甚至到 module 、class 、function、variable 的组织命名都需要架构。
+
+可以说只要是需要做决定的地方，都需要架构。换句话说，每个程序员都是架构师，差别只在于做出的选择好坏有别，差异巨大。
+
+这些差异来自于做选择的能力，用更准确的概念描述就是**权衡的能力**，英文是 **tradeoff**。
+
+## 什么是 tradeoff
+
+trade 交易，off 牺牲，tradeoff 就指用牺牲什么来达到某种交易，有取有舍，取舍中做出选择。
+
+### tradeoff 需要我们知道事物的不同方面
+
+任何时候我们做 tradeoff 之前都需要了解我们所面对的事务，这是 tradeoff 的前提。
+
+举个例子，要做一个电商系统，在 mysql、mongodb、postgresql 做出选择就需要知道每个 database 的特性(简单列举，仅做说明)：
+
+- mysql 支持事务、分布式部署，典型的关系型数据库
+- mongodb 不支持事务、分布式部署，典型的非关系型数据库
+- postgresql 支持事务、分布式部署，非关系型数据库，市场使用率没有 mysql 高
+
+电商系统要求强一致性、支持事务，这是基本要求，所以 mongodb 遭淘汰，mysql 使用人数众多，已在行业中积累了丰富的案例和经验，规避了很多未知的风险，相比之下 postgresql 就显得比较小众，因而选择 mysql。
+
+任何事物都有利有弊，但利弊都不是无限大，而且他们的利弊都只有在特定情况下才会显得特别重要。
+
+选择 mysql 是因为它支持事务，强一致性，市场占有率高，这是其**利**。
+
+当规模达到一定程度之后，mysql 在扩展、性能等方面就没有其他一些 nosql 数据库做得好，这是其**弊**。
+
+现实的情况是，很多人根本不会有机会感受到 mysql 的弊。
+
+### tradeoff 需要我们能够量化事务的利弊
+
+量化就是要有数据支撑我们的选择，了解了不同事务的不同方面仅仅只能帮助我们做出粗略的选择，尽快删选掉那些不合格的选项，想要进一步判断选择的正确与否就需要我们对选择的事物进行全方位的衡量和量化。
+
+mysql 在特定 linux 版本、特定磁盘的 QPS 能达到多少？
+
+数据规模不同时，mysql 的读写每秒分别都是多少？
+
+mysql 在 1000 的并发、1 万的并发、10 万的并发下需要什么样的集群规模？
+
+每个问题背后都需要我们做出非常细致的研究和测试，得出详细数据指标，这些指标才是真正支持我们做选择的可靠依据。
+
+了解了 tradeoff 的重要性，那我们如何培养这种选择的能力？
+
+## 选择能力的培养
+
+### 丰富的知识储备是前提
+
+世界上有很多知识是我们自己都不知道自己不知道，这就是现实。
+
+为什么我们没有做出好的选择，因为我们根本不知道还有那些选择，而且我们竟然**自己也不知道自己不知道**，为此甚至还沾沾自喜以为自己做出了好选择。
+
+这也是为什么面对同样的选择，不同的人会有完全不同的反应。因为彼此的知识储备根本不在一个层面，理解程度当然高低不同。
+
+如果根本不知道 postgresql，又如何谈得上对它的选择。
+
+### 靠事实说话的理工科思维
+
+理工科思维讲究有没有道理，有没有说服力。这个道理不是建立在想当然的感觉、权威、道德等缺乏可靠事实的标准之上。
+
+实验、测量、分析、数据这些带有强烈理工科思维的词汇是体现依靠事实说话的有力证明。
+
+以理工科的方式对选择的利弊进行量化分析，列依据，摆事实，如何选择将一目了然。
+
+| Operation                          | Time (nsec) |
+| ---------------------------------- | ----------- |
+| Compress 1KB bytes with Zippy      | 3,000       |
+| Read 1MB sequentially from memory  | 250,000     |
+| Disk seek                          | 10,000,000  |
+| Read 1MB sequentially from disk    | 20,000,000  |
+| System call overhead               | 400         |
+| Context switch between processes   | 3000        |
+| fork() (statically-linked binary)  | 70,000      |
+| fork() (dynamically-linked binary) | 160,000     |
+
+from https://everythingisdata.wordpress.com/2009/10/17/numbers-everyone-should-know/
+
+## 无处不在的架构
+
+架构反应的是 program 的设计过程，考虑的是 program 的未来，何时何地开始 program 的架构？
+
+从开始给 program 起名字就应该考虑架构，好的名字是 program 核心含义的直接表达，react、jquery、docker 无一例外都有非常响亮且有意义的名字。
+
+function 的设计、class 的命名、package 的引用关系都是架构的体现，所谓见微知著，这些代码的细节最直接影响着一个 program 的质量。
+
+架构是一种思维模式的体现，是程序员面对代码的意志表达，从今天做出的选择或写的代码开始你的架构之路吧，架构无处不在。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

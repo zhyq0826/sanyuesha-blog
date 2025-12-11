@@ -1,0 +1,170 @@
+---
+title: "理解和学习 react"
+summary: "2013 年 react 刚出来的时候，由于自己并不是前端，看着这个家伙新奇，但是并没有投入太多目光，但是工作中或多或少会用到前端，断断续续也接触了一下，直到今年实在也是迈不过去了，索性花点时间研究一下，以下就是我在写 react 的过程中的一点心得。"
+date: "2022-08-21"
+tags: 
+  - "react"
+group: "react"
+---
+
+
+2013 年 react 刚出来的时候，由于自己并不是前端，看着这个家伙新奇，但是并没有投入太多目光，但是工作中或多或少会用到前端，断断续续也接触了一下，直到今年实在也是迈不过去了，索性花点时间研究一下，以下就是我在写 react 的过程中的一点心得。
+
+## React 究竟是什么
+
+我是从 jQuery 时代过来的人，用过 Backbone、YahooUi 和 Dojo，也用 jQuery 自己造轮子替代了生产环境中的 Backbone 应用，而且跑的很好，日活百万的安卓壁纸一直跑着我造的轮子，直到原生 APP 上线很久以后才慢慢开始下线，在手机性能非常拉垮的 2011～2015，jQuery 非常够用，据说 slack 也是 jQuery 写的。
+
+在 2015 年之后，vuejs、angular、react 如火如荼，我却选择了 emberjs 作为公司前端的技术选型，很重要一个原因还是因为 jQuery 有足够大的生态，而这些新起之秀都需要从头造轮子，团队甚至连专业前端都没有，哪来精力和新框架硬杠，倒是不复杂的场景都用 react 和 vuejs 试了试水，终究没有大规模使用，直到我离开创业公司，我也没有写过一行 react 代码。
+
+今年开始断断续续写了写 react（主要后端可能写着更无聊🐶），写着写着我愈发想知道 react 到底是什么，因为这货和 emberjs 截然不同，直到看了 [React as a UI Runtime](https://overreacted.io/react-as-a-ui-runtime/) 我才有点明白这货和我当年用 jQuery 造的轮子思路还有点像。当时为了解决前端模板渲染效率和维护性问题，通过 JS 的简单对象动态创建出静态字符串模板，然后在根据模板在页面中的位置，通过 DOM 对象动态的替换，每个页面都是有一个或几个这样的对象组成，这个 JS 对象包含了:
+
+![](https://static.git-star.com/WX20220821-221415@2x.png)
+
+- 静态模板 - template
+
+- 数据加载和组装 - load
+
+- 渲染 - render
+
+1. 静态模板包含原始的HTML和条件判断，实现了根据条件渲染不同的HTML片段
+
+2. 数据加载和组装类似 react 中的 `useEffect` 处理非 UI 逻辑以及加工 state
+
+3. 渲染类似 react 中 ListRender 和 Render，静态模板和渲染过程中都会有事件进行绑定
+
+每个这样的 JS 对象都自包含着数据加载、事件处理、模板渲染等等，实现了高内聚，不同的 JS 对象通信是依靠全局的 JS 对象完成的，类似 react 中的 AppContext。
+
+闲篇扯完，回到正题，react 究竟是什么？React 从诞生之初就说自己是：
+
+> A JavaScript library for building user interfaces。
+
+而 Dan Abramov 做了进一步解释：React is a ui runtime。Runtime 很准确的说明了 react 扮演的角色，也就是说 react 扮演了一个实时维持 UI 状态的运行时，这样才能在 UI 状态变化时做到高效渲染。这个运行时，react 称之为 Host Instance，也就是包含 Dom Nodes Tree 的一个环境，这个环境本身其实也是一个 Dom Node，特殊的地方在于它是 react 维护的。这个环境包含 react 维持组件运行状态的各种属性以及和宿主环境交互的各种 API，在 web browner 中就是 DOM API：appendChild、removeChild等，在 macOS React Native 中可能就是 Mac 自身的 UIKit API。在 react 中，一个 `ReactElement` 就是一个 Host Instance，也是 react 构建 UI 的最小单元。
+
+## React 如何渲染组件
+
+```jsx
+ReactDOM.render(
+  <button className="blue" />,
+  document.getElementById('container')
+);
+```
+
+一个组件 `<button className="blue" />` 在 react 中会表达成一个 JS 表达式：
+```js
+{
+    type: 'button',
+    props: { className: 'blue' }
+}
+```
+
+这个表达式通过 DOM 的形式描述了一个组件以及组件的状态，渲染组件的过程就是把这个表达式翻译成 DOM 加入到渲染容器的过程:
+
+```js
+const domContainer = document.getElementById('container')
+let domNode = document.createElement('button');
+domNode.className = 'blue';
+domContainer.appendChild(domNode)
+```
+
+当组件的状态出现变化的时候，react 会对组件的各个属性进行比较，以此来决定是否需要重新渲染:
+
+```jsx
+// className blue->red
+ReactDOM.render(
+  <button className="red" />,
+  document.getElementById('container')
+);
+
+
+// node type button->p
+ReactDOM.render(
+  <p>Hello world</p>,
+  document.getElementById('container')
+);
+```
+
+如果比较中发现，组件前后是同类型的组件只是组件属性发生了变化，react 会直接复用之前渲染的 Host Instance，如果是不一样的组件，则重新渲染，react 这一处理过程叫 Reconciliation。
+
+React 的渲染机制大致如此，具体到条件渲染、循环渲染的具体处理逻辑可以详看 https://overreacted.io/react-as-a-ui-runtime/#lists 。
+
+## 重绘给 UI Runtime 带来的改变是什么
+
+讨论这个问题，我们限定在 react 的 Function Component 中。React 作为一个 UI runtime 维护了 UI 渲染时需要的状态，而通过改变 state 和 props 会触发 react 重新渲染组件，为了保证 UI 的正确渲染以及高性能，react 需要决定什么是需要重新渲染的，什么不需要，默认情况下如果我们不做任何处理，react 会重新渲染 Function Component 中所有的内容，包括函数。也就是说只要触发了 component 重新渲染，component 内部一切都是新的。
+
+```jsx
+import { useState } from "react";
+
+function Hello(props){
+  return <>{props.name}</>
+}
+
+export default function App(props){
+  const [name, setName] = useState('hello world');
+
+  const someFunc = ()=>{
+    console.log("some func render")
+  }
+
+  someFunc()
+
+  return (
+    <div className="App" onClick={()=> setName(new Date().toTimeString())} >
+      <Hello name={name} ></Hello>
+    </div>
+  );
+}
+
+```
+
+上述代码在 name 发生改变时会触发组件重新渲染，可以看到 `someFunc` 也会重新执行，由于 JS 重没有办法获取变量的 ID，如果能这里看到是每次渲染都会是一个新的 ID，即便 someFunc 并没有参与UI的改变。
+
+React 的这种机制让 UI 的改变变得简单和灵活，而且开发者心智负担更轻，不像 ember 中必须要告诉 template 这是个 tracked 属性，也不像 vuejs 什么都放到 model 中，亦或者通过 compute 以及 watch 来决定什么时候要触发 UI 的改变。React 中只要 props 或者 state 发生了改变都会让组件以及子组件重新渲染，这种渲染机制让开发变得简单了，但可能会带来性能问题，而性能是 react 自身要操的心了，大部分时候一般的 App 不会涉及到。
+
+再来看看重绘制时 react 如何管理 UI 的状态。
+
+```jsx
+import { useEffect, useState } from "react";
+
+function Hello(props) {
+  return <>{props.name}</>
+}
+
+export default function App(props) {
+  const [name, setName] = useState(new Date().toTimeString());
+
+  useEffect(() => {
+    setTimeout(() => {
+      console.log(name)
+    }, 3000);
+  })
+
+  return (
+    <div className="App" onClick={() => setName(new Date().toTimeString())} >
+      <Hello name={name} ></Hello>
+    </div>
+  );
+}
+```
+
+来看结果
+
+![](https://static.git-star.com/WX20220904-230229@2x.png)
+
+当 UI 的时间已经改变时，控制台输出的时间仍然是个旧值，react 始终保证每次渲染都是渲染时的状态，react 中称这种行为为 `state capture`。React 会在渲染组件时捕获 UI 状态，也就是渲染实际上当时 UI 的快照。这样保证了状态不论改变多少次，UI 的变化总是会和状态保持着一致性。当然如果 state 频繁改变，react 还会通过 batch update 以及多次渲染合并称一次来满足 UI 渲染的性能要求，个中细节参考 [React as a UI Runtime](https://overreacted.io/react-as-a-ui-runtime/) 、[A Complete Guide to useEffect](https://overreacted.io/a-complete-guide-to-useeffect/) 。
+
+
+
+## React 的灵活性让开发过程愉悦
+
+相比其他框架，React 的有一个很大特征就是**灵活**，由于 react 的最小 UI 单元其实就是一个 React Element ，而且几乎没有实现成本，这就导致了可以基于 UI Element 完成任意的组合实现各种不同的 UI 单元，而且基于 props 和 state 的 UI 状态管理，让 react 的 UI 的交互模式变得非常纯粹，不需要再掌握更复杂的模式了，这些能完成 95% 的工作，心智非常简单，开发高效。
+
+灵活也带来另一个问题，就是如何才能做好组合的设计和抽象，以实现组件的维护成本更低，复用程度更高。因而不同水平的开发人员使用 react 实现相同的功能可能差异还是很大的。
+
+## 学习 React 从哪里开始
+
+1. 和其他大部分开源技术一样，官网总是有最好的教程 https://reactjs.org/ ，用 [Create React App](https://create-react-app.dev/) 写个小项目熟悉一下 JSX 的语法，大部分从来没接触过 JSX 的人都需要花点时间适应 JSX 语法
+2. 接着拨云见雾了解 React 的本质是什么 [React as a UI Runtime](https://overreacted.io/react-as-a-ui-runtime/)
+3. 学习使用 [Hooks](https://reactjs.org/docs/hooks-intro.html)
+4. Hooks 使用一段时间之后，了解一下 hooks 的来龙去脉以及 hook 的本质 [A Complete Guide to useEffect](https://overreacted.io/a-complete-guide-to-useeffect/)
+
+熟悉了解了这些大部分 React 的开发都能进行了，一边学习一边多看看官网的文档，包括历年新特性的发布介绍，慢慢会对 React 有更深入的理解。

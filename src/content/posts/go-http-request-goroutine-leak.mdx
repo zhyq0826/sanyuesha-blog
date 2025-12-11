@@ -1,0 +1,96 @@
+---
+title: "Go http request 引起的 goroutine 泄漏"
+summary: "## 问题回放"
+date: "2019-09-10"
+group: "golang"
+---
+
+
+
+## 问题回放
+
+
+线上一个 Go 服务内存一直持续增长，使用 [Go ppof](https://book.eddycjy.com/golang/tools/go-tool-pprof.html) 分析之后发现 `net/http.(*persistConn).writeLoop` 和 `net/http.(*persistConn).readLoop` goroutine 数目多达数万个，很明显发生了 goroutine 泄漏。
+
+
+## 初步定位
+
+
+既然是 `net/http` 相关的代码，一定和 http 请求有关，扫了一下服务中用到的所有 http request，没有发现特别异样的代码，以为是 http 没有主动释放连接导致的，手动在某些 http request 中加入了 `request.Close = true`，发现 goroutine 数目没有明显变化，增加趋势仍在。上面泄漏的代码位于 `net/http/transport` 文件中，是 `persistConn` 这个 struct 的方法，负责对 connection 的读和写，从字面意思不难看出，`persistConn` 是对普通 tcp connection 的封装，以达到连结复用的目的。登陆到出问题主机查看网络连接的情况`netstat -antl` 发现连接数并没有明显的增加，说明 `writeLoop` 和 `readLoop` 并没有长期持有连接不释放，上面 `request.Close = true` 并没有解决问题。
+
+
+## 阅读源码
+
+
+阅读 `http.Client` 发送请求的源码梳理流程，整个 http 请求的读取都是通过实现了 http 协议的 Transport 来实现，Transport 又利用 persistConn 封装了普通的 connection 来达到连接服用的目的，也就是满足 http 中 keep-alive 的需求，一旦一个 `http client` 需要 `keep-alive` 那么这个 connection 就不会断开，重复利用，而 `readLoop` 的逻辑就是一个 for 循环里面几个小的 select，for 循环退出的条件就是 `alive` 变成 `false`：
+```golang
+
+select {
+case rc.ch <- responseAndError{res: resp}:
+case <-rc.callerGone:
+	return
+}
+
+
+select {
+case bodyEOF := <-waitForBodyRead:
+	pc.t.setReqCanceler(rc.req, nil) // before pc might return to idle pool
+	alive = alive &&
+		bodyEOF &&
+		!pc.sawEOF &&
+		pc.wroteRequest() &&
+		tryPutIdleConn(trace)
+	if bodyEOF {
+		eofc <- struct{}{}
+	}
+case <-rc.req.Cancel:
+	alive = false
+	pc.t.CancelRequest(rc.req)
+case <-rc.req.Context().Done():
+	alive = false
+	pc.t.cancelRequest(rc.req, rc.req.Context().Err())
+case <-pc.closech:
+	alive = false
+}
+```
+
+这几个 select 都是等待各种 `chan` 满足条件之后才能继续执行，而 goroutine 退出需要满足：
+
+- body 读取完毕
+- request 主动 cancel
+- request context Done 状态 true
+- 当前的 persistConn 关闭
+
+所以上述几个条件不满足，goroutine 将一直存在，也就是如果一个 http request 的 body 没有被用到，那么这个 goroutine 也不会被关闭。查看官方文档：
+```golang
+// The client must close the response body when finished with it:
+
+resp, err := http.Get("http://example.com/")
+if err != nil {
+	// handle error
+}
+defer resp.Body.Close()
+body, err := ioutil.ReadAll(resp.Body)
+// ...
+```
+
+明确要求必须显式关闭 body，于是检查我们的服务发现确实某一个 http 请求的 body 没有被用到，所以没有关闭操作，主动关闭之后 goroutine 开始不增长了。
+
+
+
+## Go 中需要主动关闭 http body
+
+如果之前写过 Python，会觉得关闭 http response body 真的是多此一举，这和整个 Go 实现 http 请求的机制有关系，因为 Go 是通过 goroutine 实现 http 的请求的，一个 http request 可能是由多个 goroutine 组成，而 goroutine 没有办法通过其他机制杀死，只能等待 goroutine 主动退出，所以必须要有机制去通知 goroutine 告诉它们工作结束了可以退出了，一旦这个机制遭到破坏，那么 goroutine 就不会释放。因为上面的 body 没有被使用，没有主动关闭 body，而且请求也没有主动关闭，导致底层的 tcp 连接可能早就断开了，但是上层的持有连接的 goroutine 依然没有释放，除了主动关闭 body 之外，还可以在调用结束之后关闭 request：
+
+```golang
+request, err := http.NewRequest("GET", url, bytes.NewReader([]byte("")))
+ctx, cancelFunc := context.WithCancel(context.Background())
+request = request.WithContext(ctx)
+client := http.Client{}
+resp, err := client.Do(request)
+if err != nil {
+	return false
+}
+defer cancelFunc()
+```
+

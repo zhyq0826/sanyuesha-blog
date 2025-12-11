@@ -1,0 +1,258 @@
+---
+title: "Consul 服务注册和查询"
+summary: "前文我们已经简单介绍 Consul 的安装和启动了，本篇我们来开始在 consul 中注册和使用 service"
+date: "2018-04-28"
+tags: 
+  - "服务"
+  - "consul"
+  - "service"
+group: "consul"
+---
+
+
+前文我们已经简单介绍 Consul 的安装和启动了，本篇我们来开始在 consul 中注册和使用 service
+
+## 定义 service
+
+Service 可以通过 [service 定义](https://www.consul.io/docs/agent/services.html)或者 API 调用进行注册，但是使用配置文件定义是最通用的形式。
+
+首先创建一个目录用来存放配置文件，Consul 会从配置目录中加载所有配置文件，一种在 unix 系统中通用的做法是在定义一个 `/etc/consul.d` 目录。
+
+```shell
+mkdir consul.d
+```
+
+然后创建一个文件用来存放我们定义的服务，在这个配置中我们还提供了一个 tag 用来做服务查询：
+
+```
+$ echo '{"service": {"name": "web", "tags": ["python"], "port": 8888}}' | tee consul.d/web.json
+```
+
+这里我们定义了名称是 web 并且跑在 8888 端口的 web 服务。
+
+重启 agent 并且提供配置目录：
+
+```shell
+consul agent -dev -node=zhaoyongqiang -config-dir=consul.d
+==> Starting Consul agent...
+==> Consul agent running!
+           Version: 'v1.0.0'
+           Node ID: '2705278f-db30-b1a8-9607-1107a4524395'
+         Node name: 'zhaoyongqiang'
+        Datacenter: 'dc1' (Segment: '<all>')
+            Server: true (Bootstrap: false)
+       Client Addr: [127.0.0.1] (HTTP: 8500, HTTPS: -1, DNS: 8600)
+      Cluster Addr: 127.0.0.1 (LAN: 8301, WAN: 8302)
+           Encrypt: Gossip: false, TLS-Outgoing: false, TLS-Incoming: false
+
+==> Log data will now stream in as it occurs:
+
+    2017/11/16 11:36:32 [DEBUG] Using random ID "2705278f-db30-b1a8-9607-1107a4524395" as node ID
+    2017/11/16 11:36:32 [INFO] raft: Initial configuration (index=1): [{Suffrage:Voter ID:2705278f-db30-b1a8-9607-1107a4524395 Address:127.0.0.1:8300}]
+    2017/11/16 11:36:32 [INFO] raft: Node at 127.0.0.1:8300 [Follower] entering Follower state (Leader: "")
+    2017/11/16 11:36:32 [INFO] serf: EventMemberJoin: zhaoyongqiang.dc1 127.0.0.1
+    2017/11/16 11:36:32 [INFO] serf: EventMemberJoin: zhaoyongqiang 127.0.0.1
+    2017/11/16 11:36:32 [INFO] consul: Handled member-join event for server "zhaoyongqiang.dc1" in area "wan"
+    2017/11/16 11:36:32 [INFO] consul: Adding LAN server zhaoyongqiang (Addr: tcp/127.0.0.1:8300) (DC: dc1)
+    2017/11/16 11:36:32 [INFO] agent: Started DNS server 127.0.0.1:8600 (udp)
+    2017/11/16 11:36:32 [INFO] agent: Started DNS server 127.0.0.1:8600 (tcp)
+    2017/11/16 11:36:32 [INFO] agent: Started HTTP server on 127.0.0.1:8500 (tcp)
+    2017/11/16 11:36:32 [WARN] raft: Heartbeat timeout from "" reached, starting election
+    2017/11/16 11:36:32 [INFO] raft: Node at 127.0.0.1:8300 [Candidate] entering Candidate state in term 2
+    2017/11/16 11:36:32 [DEBUG] raft: Votes needed: 1
+    2017/11/16 11:36:32 [DEBUG] raft: Vote granted from 2705278f-db30-b1a8-9607-1107a4524395 in term 2. Tally: 1
+    2017/11/16 11:36:32 [INFO] raft: Election won. Tally: 1
+    2017/11/16 11:36:32 [INFO] raft: Node at 127.0.0.1:8300 [Leader] entering Leader state
+    2017/11/16 11:36:32 [INFO] consul: cluster leadership acquired
+    2017/11/16 11:36:32 [INFO] consul: New leader elected: zhaoyongqiang
+    2017/11/16 11:36:32 [DEBUG] consul: Skipping self join check for "zhaoyongqiang" since the cluster is too small
+    2017/11/16 11:36:32 [INFO] consul: member 'zhaoyongqiang' joined, marking health alive
+    2017/11/16 11:36:32 [INFO] agent: Synced service 'web'
+```
+
+注意输出包含了 "synced" the web service，consul 已经成功把定义的服务导入 service catlog 了。
+
+## 查询服务
+
+一旦服务注册之后，我们就可以使用 DNS 或者 HTTP 的方式查询 service 了。
+
+### DNS 查询
+
+服务注册之后可以通过 DNS 进行服务查询，service 的 DNS name 是 **NAME.service.consul**，默认情况下所有的 DNS names 总是在 consul namespace 中，namespace 可以进行 [配置](https://www.consul.io/docs/agent/options.html#domain) ，service 的 subdomain 用来告知 Consul 我们需要查询的 service 名称，在这里就是 NAME：
+
+```shell
+% dig @127.0.0.1 -p 8600 web.service.consul                                                                          
+
+; <<>> DiG 9.8.3-P1 <<>> @127.0.0.1 -p 8600 web.service.consul
+; (1 server found)
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 25186
+;; flags: qr aa rd; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 0
+;; WARNING: recursion requested but not available
+
+;; QUESTION SECTION:
+;web.service.consul.        IN  A
+
+;; ANSWER SECTION:
+web.service.consul. 0   IN  A   127.0.0.1
+
+;; Query time: 87 msec
+;; SERVER: 127.0.0.1#8600(127.0.0.1)
+;; WHEN: Thu Nov 16 11:46:31 2017
+;; MSG SIZE  rcvd: 52
+```
+
+可以看到一个带有节点 ip 的 record 会返回，record 只能 hold IP address。
+
+我们也可以通过 DNS 查询完整的 address/port pair:
+
+```shell
+± % dig @127.0.0.1 -p 8600 web.service.consul SRV
+
+; <<>> DiG 9.8.3-P1 <<>> @127.0.0.1 -p 8600 web.service.consul SRV
+; (1 server found)
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 50494
+;; flags: qr aa rd; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 2
+;; WARNING: recursion requested but not available
+
+;; QUESTION SECTION:
+;web.service.consul.        IN  SRV
+
+;; ANSWER SECTION:
+web.service.consul. 0   IN  SRV 1 1 8888 zhaoyongqiang.node.dc1.consul.
+
+;; ADDITIONAL SECTION:
+zhaoyongqiang.node.dc1.consul. 0 IN A   127.0.0.1
+zhaoyongqiang.node.dc1.consul. 0 IN TXT "consul-network-segment="
+
+;; Query time: 36 msec
+;; SERVER: 127.0.0.1#8600(127.0.0.1)
+;; WHEN: Fri Nov 17 16:19:30 2017
+;; MSG SIZE  rcvd: 137
+```
+
+SRV 记录表明 web service 在端口 8888 上并且存在于 zhaoyongqiang.node.dc1.consul 这个节点上。
+
+我们也可以使用 tag 过滤需要出现的 web service，形如 **TAG.NAME.service.consul**，比如使用我们定义 service 时使用的 tag python：
+
+```shell
+dig @127.0.0.1 -p 8600 python.web.service.consul
+
+; <<>> DiG 9.8.3-P1 <<>> @127.0.0.1 -p 8600 rails.web.service.consul
+; (1 server found)
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 14331
+;; flags: qr aa rd; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 0
+;; WARNING: recursion requested but not available
+
+;; QUESTION SECTION:
+;rails.web.service.consul.  IN  A
+
+;; ANSWER SECTION:
+rails.web.service.consul. 0 IN  A   127.0.0.1
+
+;; Query time: 15 msec
+;; SERVER: 127.0.0.1#8600(127.0.0.1)
+;; WHEN: Fri Nov 17 16:23:39 2017
+;; MSG SIZE  rcvd: 58
+```
+
+### HTTP 查询
+
+除了 DNS 也可以使用 HTTP 的方式查询 web service
+
+```
+± % curl http://localhost:8500/v1/catalog/service/web
+
+[
+    {
+        "ID": "2705278f-db30-b1a8-9607-1107a4524395",
+        "Node": "zhaoyongqiang",
+        "Address": "127.0.0.1",
+        "Datacenter": "dc1",
+        "TaggedAddresses": {
+            "lan": "127.0.0.1",
+            "wan": "127.0.0.1"
+        },
+        "NodeMeta": {
+            "consul-network-segment": ""
+        },
+        "ServiceID": "web",
+        "ServiceName": "web",
+        "ServiceTags": [
+            "python"
+        ],
+        "ServiceAddress": "",
+        "ServicePort": 8888,
+        "ServiceEnableTagOverride": false,
+        "CreateIndex": 6,
+        "ModifyIndex": 6
+    }
+]
+```
+
+http api 可以返回所有定义了该服务的节点信息，稍后我们在 [health checks](https://www.consul.io/intro/getting-started/checks.html) 会看到，通常情况下你指向查询健康状态是 passing 的实例节点。
+
+```shell
+curl 'http://localhost:8500/v1/health/service/web?passing'
+[
+    {
+        "Node": {
+            "ID": "db363ec4-ba40-8563-fa35-b9fd762aaf2b",
+            "Node": "zhaoyongqiang",
+            "Address": "127.0.0.1",
+            "Datacenter": "dc1",
+            "TaggedAddresses": {
+                "lan": "127.0.0.1",
+                "wan": "127.0.0.1"
+            },
+            "Meta": {
+                "consul-network-segment": ""
+            },
+            "CreateIndex": 5,
+            "ModifyIndex": 6
+        },
+        "Service": {
+            "ID": "web",
+            "Service": "web",
+            "Tags": [
+                "python"
+            ],
+            "Address": "",
+            "Port": 8888,
+            "EnableTagOverride": false,
+            "CreateIndex": 6,
+            "ModifyIndex": 6
+        },
+        "Checks": [
+            {
+                "Node": "zhaoyongqiang",
+                "CheckID": "serfHealth",
+                "Name": "Serf Health Status",
+                "Status": "passing",
+                "Notes": "",
+                "Output": "Agent alive and reachable",
+                "ServiceID": "",
+                "ServiceName": "",
+                "ServiceTags": [],
+                "CreateIndex": 5,
+                "ModifyIndex": 5
+            }
+        ]
+    }
+]
+```
+
+
+
+## 更新 service
+
+service 更新可以通过重新定义配置文件或者 HTTP 接口进行更新，更新配置文件可以向 agent 发送 SIGHUP 来达到不重启服务而更新配置的目的。
+
+## 参考资料
+
+- https://www.consul.io/intro/getting-started/services.html

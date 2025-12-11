@@ -1,5 +1,6 @@
 ---
 import PostMeta from "./PostMeta.astro";
+import { getExcerptHtml } from "../utils/excerpt";
 import type { CollectionEntry } from "astro:content";
 
 const { items = [], title = "文章", actionHref, actionText = "更多" } = Astro.props as {
@@ -21,7 +22,7 @@ const { items = [], title = "文章", actionHref, actionText = "更多" } = Astr
         <a href={`/blog/${item.slug}`} style="display:block; margin-bottom:0.75rem; font-weight:700; letter-spacing:-0.01em; font-size:1.05rem;">
           {item.data.title}
         </a>
-        <p style="margin:0 0 0.75rem;color:#4b5563;line-height:1.5;">{item.data.summary}</p>
+        <div style="margin:0 0 0.75rem;color:#4b5563;line-height:1.5;" set:html={getExcerptHtml(item)} />
         <PostMeta date={item.data.date} tags={item.data.tags} group={item.data.group} />
       </article>
     ))}

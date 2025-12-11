@@ -1,0 +1,101 @@
+---
+title: "并发 Go 程序中的共享变量 (一)：data race"
+summary: "> 本系列是阅读 \"The Go Programming Language\" 理解和记录。"
+date: "2018-08-23"
+tags: 
+  - "race condition"
+  - "concurrency"
+group: "Go 读书笔记"
+---
+
+
+> 本系列是阅读 "The Go Programming Language" 理解和记录。
+
+在 Go 的程序中，如果只有一个 goroutine 也就是只有一个 main goroutine 存在时，所有代码都是顺序执行的，也就是说程序的执行步骤就是它们的逻辑顺序，一个步骤是否能在另一个步骤之前或者之后发生时非常确定的。然而如果一个 Go 程序有两个或者多个 goroutine 存在，我们就很难确定一个 event(事件) x 是否发生在另一个 goroutine 中的 event(事件) y 之前，之后，还是同时发生。如果我们不能确定 x 和 y 的发生顺序，则说 x 和 y 是并发的 concurrent。
+
+考虑一个概念 **concurrency safe**，这个概念是指一个在顺序执行的程序中能够正常执行的 function 如果可以并发的执行，并且在不采用任何同步措施的情况下执行结果依然正确，那么这个 function 是 concurrency safe 的，也就是说它可以并发的执行。同理，如果一个 type 的所有方法以及对它自身的所有操作是 concurrency safe 的，则这个 type 是 concurrency safe 的。
+
+我们在编写一个 Go 程序时并不需要保证所有的使用的 type 都是 concurrency safe 的，只在需要对某个 type 进行并发操作的情况下保证 type 是 concurrency safe 的，大多数情况下我们应该尽量保证对程序 variable 的访问都尽量在单个 goroutine 完成或者使用互斥锁来保护我们需要访问的程序区域。
+
+在继续探讨我们的话题之前，我们必须要知道 Go 中 **race condition** 就是说程序在多个 goroutine 交互执行的情况下可能会给出不正确的结果。理解 race condition 讲的是什么，是理解并发程序的关键所在。
+
+下面我们用一个简单的例子来说明 race condition 可能会带来的问题，这个例子展示了读取账户余额和向账户中存钱的这两个操作。
+
+```go
+// Package bank implements a bank with only one account.
+package bank
+var balance int
+func Deposit(amount int) { balance = balance + amount }
+func Balance() int { return balance }
+```
+
+如果这两个操作是以下面的形式发生在两个 goroutine 中：
+```go
+ // Alice:
+ go func() {
+     bank.Deposit(200)                // A1
+     fmt.Println("=", bank.Balance()) // A2
+ }()
+
+  // Bob:
+ go bank.Deposit(100)                 // B
+
+```
+
+最终结果可能会有以下几种形式：
+
+| Alice first | Bob first  | Alice /Bob /Alice |
+| ----------- | ---------- | ----------------- |
+| 0           | 0          | 0                 |
+| A1  200     | B  100     | A1 200            |
+| A2  "= 200" | A1 300     | B 300             |
+| B  300      | A2 "= 300" | A2 "= 300"        |
+|             |            |                   |
+
+在这几种结果中最终的 balance 都是 300，差异仅仅是在 Alice 看到的 balance 是 200 还是 300 的差异，看起来并没有造成太大的影响，在此我们首先来解释一下为什么会有这样的差异。
+
+在现代计算机结构中，多核 CPU 对内存的操作并不是完全实时的，每个 CPU 为了能够加速对内存的访问都会有 cache，CPU 把内存的数据读出来之后，进行修改然后重新写入内存的过程中，可能其它的 CPU 已经对内存区域进行修改了，这就是多核 CPU 在对 shared data  进行存取时引入的 race condition。为了能够防止这种情况的发生，很多 CPU 指令都提供了原子操作来保证对内存的修改是唯一且正确的。
+
+在上面的例子中，由于两个 goroutine 对 balance 这个同一内存区域读取的时机差异，就有可能会造成不同的执行顺序输出的结果是不同的。
+
+而下面这种执行顺序造成的影响在现实世界中是不能容忍的。
+
+| action | balance |                            |
+| ------ | ------- | -------------------------- |
+| A1r    | 0       | balance + amount           |
+| B      | 100     | balance = balance + amount |
+| A1w    | 200     | balance = ...              |
+| A2     | 200     | Println("= ", balance)     |
+
+最终 B 操作的 100 消失了！这样的程序我们称之为 race condition 中的 **data race**，用一句话概括其含义就是：**Data race 经常发生在多个 goroutine 存取同一个 variable 时，至少有一个 goroutine 会执行修改操作** 。
+
+**如何避免 data race？**
+
+第一种方式是**避免对共享 variable 进行写操作**
+
+Go 中 map 不是 concurrency safe，如果在多个 goroutine 中不加锁而直接对 map 操作就很难避免错误的结果出现：
+
+```go
+var icons = make(map[string]image.Image)
+func loadIcon(name string) image.Image
+     // NOTE: not concurrency-safe!
+func Icon(name string) image.Image 
+{
+    icon, ok := icons[name]
+    if !ok {
+        icon = loadIcon(name)
+        icons[name] = icon
+    }
+    return icon
+}
+```
+
+上面的例子中对 icons 的操作不是 concurrency safe。
+
+第二种方式是**避免在多个 goroutine 中存取变量**
+
+Go 中这样的操作很常见，为了保证数据的准确性，只在一个 goroutine 中执行对 variable 的所有操作，其他 goroutine 通过 channel 向该 goroutine 进行请求来实现对 variable 的存取和更新，这样保证了 variable 的存取都只在一个 goroutine 中进行，这也充分对 Go 的理念进行阐释：**Do not communicate by sharing memory; instead, share memory by communicating**。
+
+第三种方式是**使用锁来保护共享的 variable 来保证任意时刻只有一个 goroutine 对变量进行修改**
+
+关于锁的使用，我们会在下一节进行详细介绍。

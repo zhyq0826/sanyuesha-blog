@@ -1,0 +1,96 @@
+---
+title: "深入理解 Python package"
+summary: "Python 是通过 module 组织代码的，module 即一个 py 文件，module 又是通过 package 来组织的，package 是一个包含 的文件夹，代码，module，package 它们三者的关系就是：module 包含代码，package 至少包含一个为..."
+date: "2017-09-14"
+tags: 
+  - "package"
+group: "python"
+---
+
+
+Python 是通过 module 组织代码的，module 即一个 py 文件，module 又是通过 package 来组织的，package 是一个包含 `__init__.py` 的文件夹，代码，module，package 它们三者的关系就是：module 包含代码，package 至少包含一个为 `__init__.py` 的 module。
+
+```
+package
+├── __init__.py
+├── submodule.py
+└── subpackage
+    └── __init__.py
+
+```
+
+Python 的 package 以及 package 中的 `__init__.py` 共同决定了 package 中的 module 是如何被外界访问的。
+
+{/* more */}
+
+
+# 空的 `__init__.py` 
+
+不包含任何代码的 `__init__.py` 只用来标识一个文件夹是一个 package，而 package 是可以被导出的。
+
+```python
+from package import item
+
+```
+
+此处的 `item` 可以是 package 中包含的 submodule 或  subpackage。
+
+```
+>>> from package import submodule
+>>> from package import subpackage
+>>> 
+```
+
+
+# `__init__.py` 不为空
+
+
+如果 `__init__.py` 不为空，其中包含的任何变量，包括 function、class、variable 以及 任何被导入的 module 都可以通过 package 导出。
+
+```python
+from package import item
+
+```
+
+此处的 `item` 可以是 `__init__.py` 中的任何变量。
+
+
+# package 的初始化工作
+
+一个 package 被导入，不管在什么时候 `__init__.py` 中的代码只执行一次。
+
+```
+>>> import package
+hello world
+>>> import package
+>>> import package
+>>> 
+
+```
+
+由于 package 被导入时 `__init__.py` 中的可执行代码会被执行，所以小心在 package 中放置你的代码，尽可能消除它们产生的副作用，比如把代码尽可能的进行封装成函数或类。
+
+# 从 package 中导入变量的顺序
+
+```python
+
+from package import item
+
+```
+
+import 语句首先检查 `item` 是否是 `__init__.py` 中定义的变量，然后检查其是不是一个 subpackage，如果不是再去检查其是不是一个 module，都不是将抛出 `ImportError`。
+
+
+在 `import item.subitem.subsubitem` 语句时，除了最后一个 subsubitem 之外其他 item 都必须是 package，而最后一个 subsubitem 必须是一个 package 或者 module，不能是他前一个 item 定义的 function、class、variable。
+
+
+# 使用 `*` 导入 
+
+在 `from package import *` 语句中，如果 `__init__.py` 中定义了 `__all__` 变量，一个 list，仅仅只有这个 list 中定义的 submodule 或者变量将会被导出。
+
+如果 `__init__.py` 中没有 `__all__` 变量，导出将按照以下规则执行：
+
+1. 此 package 被导入，并且执行 `__init__.py` 中可被执行的代码
+2. `__init__.py` 中定义的 variable 被导入
+3. `__init__.py` 中被显式导入的 module 被导入
+

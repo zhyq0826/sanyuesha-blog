@@ -1,0 +1,327 @@
+---
+title: "现役司的技术转型之路"
+summary: "# 一、现状和治理思路"
+date: "2018-04-25"
+group: "程序人生"
+---
+
+
+
+# 一、现状和治理思路
+
+
+自从接手后端技术团队之后，面临的就是一个烂摊子，大小事故不断，新老人几乎没有衔接，导致大量业务代码逻辑无人知晓，架构设计没有办法追本溯源，比较长一段时间内都是急于救火，完全无暇顾及技术和管理，人员也是基本放任状态。
+
+在突击解决了几次线上面临的大事故之后，暂时摁住了故障频发的势头，让技术团队可以稍缓一口气，做一些早该进行的工作。
+
+## 现状描述
+
+整个后端技术团队支撑的是一组日活达百万的产品，包括各个公众平台，还包括一部分线下订单业务，涉及支付。现在面临的**外部状况**是：
+
+- 服务突发故障导致线下交易受阻，用户投诉
+- 业务需求压力过大，开发人员缺少，业务需求难以快速消化
+
+**内部状况**是：
+
+- 数百台服务资源利用和管理不善，忙的忙死，闲的闲死
+- 架构设计几乎是透明，导致新人无从摸索，出故障不能快速定位和解决
+- cache 服务、proxy 服务、nginx 服务、rpc 服务、注册和发现服务、异步任务服务、数据库服务彼此耦合严重，调用依赖非常混乱，变更困难，升级困难
+- 服务监控使用了多种监控手段，包括 glance、zabbix、munich 
+- 异步任务存在多种技术选型，rq、beanstalkd、celery
+- 缓存集群使用多种技术选型，twproxy、codis、sentinel
+- 数据统计和存储使用多种技术选型，MySQL、MongoDB、hadoop、influxdb
+- 部署环境存在多种技术选型，walle、fabric、ansible
+- 服务以单体应用存在，无降级措施，无限流措施，一损俱损
+- 数十个 worker 单台机器部署，CPU 经常超负载
+- 几百个 crontab 任务
+- 同一业务代码散落的多个代码仓库改动升级困难
+- 等.....
+
+## 治理思路
+
+思维决定了行动，无思不行，行辅助思，从行中总结提升思维的高度和境界，思维反过来指导行为实践
+
+### 治理方式 from top to down
+
+公司业务使用的是云服务器，购买、新建、管理相对来说都非常方便，云厂商提供了类似业务**分组、标签、名称**等管理手段来管理服务器。为了让业务服务部署清晰，划分明了，首先从机器名称功能分组开始梳理，**保证机器的具有单一职责，方便动态扩容和管理**。
+
+功能和名称划分清晰之后保证业务开发人员能以**上帝视角审视所有服务以及它们之间的联系**。
+
+### 开放权限，人人参与
+
+为了让每一个开发者都能透彻了解它们开发、部署的服务以及运行状态，放开所有监控工具权限，放开云厂商的机器管理权限，让每一个人都能快速了解到部署的机器，也可以通过云厂商提供的监控及时了解机器的状态。
+
+开发者要能做运维，会做运维，运维必须要有开发者参与，此举才能保证 devops 理念的实践和落地
+
+### 定位问题，各个击破
+
+整理和梳理技术团队现在面临的每一个问题，按照优先级排序，逐个投入资源彻底解决，与其不断救火，不如集中力量完全消灭一处火源，逐步降低故障率。
+
+### 系统化所有日常工作
+
+[用系统来工作](http://www.duokan.com/book/62892) 这本书的作者详细阐述了如何自己从救火队长变成了每天只需工作一两个小时的高效能人士，作者的基本理念就是**把你所有的工作都系统化，让它们自己运转**，也就是把自动化上升到了一个新的高度，**系统化**。
+
+为了能最大效率的提升技术团队的效率和产出，在找到每一个问题并击破之后，就要想办法如何让每一个问题都演变成可以自己工作的小系统，小系统彼此联合形成一个更大的系统。
+
+
+# 二、机器的群组划分
+
+## 机器分组和命名
+
+上百台机器的规模在管理上如果没有合理的划分和规划，时间一长非常容易陷入混乱，比如
+
+- **难以评估现有业务规模和资源利用率**
+
+- **难以进行容量规划和动态扩容需要**
+
+- ...
+
+公司业务使用的 ucloud 云，ucloud 提供了**业务组（tag）和主机名称（name）**来表示机器，由此可以遵循 **from bottom to top** 的思路进行划分，即所有机器按照提供的基础功能进行划分，tag 表示其所提供的基础功能，name 表示具体的业务或者实现：
+
+![](https://static.git-star.com/WX20180426-120729.png)
+
+由此可以把所有机器按照这个思路划分为：
+
+- cache
+- nginx
+- MySQL
+- api
+- worker
+- devops
+- crontab
+- consul
+
+等不同的业务组（tag），每个业务组下面又根据具体的业务逻辑或实现进行命名，以 cache 为例，可以分为
+
+- codis-server
+- codis-proxy
+- redis
+- sentinel
+- twproxy
+- ssdb
+
+以后不论是机器扩容还是缩容都可以根据这些 tag 和 name 自动进行，然后再根据这些 tag 和 name 自动获取 ip，动态地在配置服务中心进行增减。
+
+## 动态生成各业务服务的快捷入口
+
+借助云提供的 API 可以非常方便的在跳板机生成所有服务器的快捷入口，动态的在跳板机实现对所有机器的快捷访问，生成类似快捷方式：
+
+```shell
+alias s_cache_redis_cache_20.235='ssh 10.10.20.235'
+alias s_cache_redis_cache_64.207='ssh 10.10.64.207'
+alias s_cache_redis_cache_29.166='ssh 10.10.29.166'
+alias s_cache_redis_cache_44.213='ssh 10.10.44.213'
+alias s_cache_redis_cache_95.237='ssh 10.10.95.237'
+alias s_cache_redis_cache_86.173='ssh 10.10.86.173'
+```
+
+# 三、资源隔离之域名拆分
+
+## 为什么执行域名拆分
+
+现在的团队支撑的所有业务都是通过同一个域名服务的，根据 URL PATH 的不同最终路由到不同的后端 APP
+
+| URL             | 业务                     | 备注          |
+| --------------- | ---------------------- | ----------- |
+| api.host.com/v1 | business logic 1 第一个版本 | 涉及支付，核心链路   |
+| api.host.com/v2 | business logic 1 第二个版本 | 涉及支付，核心链路   |
+| api.host.com/v3 | business logic 2 第一个版本 | 不涉及支付，非核心链路 |
+
+从以上表格不难看出，现有的域名设计方案，核心业务和非核心业务都是用同样的域名，也就是他们都是用的是**同一网关做出入口**，这样会导致的问题是：
+
+**由于非核心业务引起的流量突发会波及核心业务链路**
+
+非核心业务在一些热点事件或推送的影响下流量会在短时间激增，是平时业务 5 倍甚至更高，因此之前的团队为了应付这种情况做了动态的调整带宽包，每隔一分钟检测出口带宽的使用率，以避免因为出口带宽打满而引起业务不可用，但是这个解决方案仍然有几个问题：
+
+1. **带宽检测的有延迟，并不能在带宽打满的第一时间做出调整**
+2. **动态调整带宽包依赖与云厂商的相关服务，此前因为云厂商带宽调整服务不可用导致带宽调整失败**
+
+为了能够保证核心业务始终高可用，采取如下几个措施：
+
+第一，需要把各个业务**从域名开始彻底拆分，部署不同的网关**，由于核心业务带宽稳定，可以使用较高的基础带宽来保证业务的高可用，辅助以动态调整带宽预防突发情况。
+
+第二，非核心业务依然采用动态调整的带宽的方式，观测和预估流量的走向，在业务高峰发生之前提前调整，比如在推送发生时触发流量调整事件，在业务高峰的早 9 点和晚 9 点前后提前调整流量。
+
+## 划分域名的原则
+
+**域名拆分的原则是把具有相同功能 API 划分到同一域名之下，区分核心业务（支付、交易等）和非核心业务（资讯、用户消息、评论等），始终保证核心域名的网关可用。**
+
+为了保证域名拆分可以顺利推动和落地实践，需要 API 的使用方和制作方严格遵守同一套规范，即**对应功能要部署在对应的域名之下，对应的 API 的调用要使用对应的域名**。
+
+注意，同类型服务（比如服务于同一个客户端 APP）不要引入过多域名，过多域名不利于维护，根据自己的业务场景酌情划分。
+
+命名规则可以参考类似 consul 的域名命名规则：NAME.TAG.host.com，name 表示业务功能，tag 表示具体的应用，例如 order.app.host.com 和 news.app.host.com 。
+
+# 四、资源隔离之应用拆分
+
+>  域名拆分解决的是流量激增引起的主链路不可用的问题，而应用拆分是为了**杜绝故障引起的雪崩效应**
+
+## 单体应用的雪崩效应
+
+现在团队的服务是个独立的单体应用，无论消费方是内部应用还是外部 APP 最终都是路由到同一个后端服务，也就是所有的消费方**共享后端机器资源**，包括进程资源，这样的架构组织方式带来的问题是显而易见的：**由于单一应用引起的服务故障会波及所有服务消费方**。举例来说，由于设计不当，某些极端情况下，客户端 APP 会对服务器做重试请求，这些请求由于后端的处理不当演变成了**流量攻击**直接打垮所有后端服务，**由于进程未做隔离，后端服务打垮之后，其支撑的所有业务基本处于瘫痪状态，发生雪崩效应**。
+
+## 应用拆分部署
+
+之所以所有的服务都依赖共同的机器资源，很大程度上是因为原来的代码是**一个庞大的、各个模块耦合紧密的单体应用**，鉴于业务的复杂程度要把所有业务代码全部拆分短时间很难达成，但是可以把**各个业务分开部署，根据业务功能划分的不同的域名或 URL 路由到不同的后端 APP 以达到业务拆分的目的**。
+
+改造之前的 nginx 配置:
+
+```shell
+upstream rest_frontends {
+    # ip_hash;
+    keepalive 1200;
+    server ip1:19600 max_fails=1 fail_timeout=10s;
+    server ip2:19600 max_fails=1 fail_timeout=10s;
+    server ip3:19600 max_fails=1 fail_timeout=10s;
+    server ip4:19600 max_fails=1 fail_timeout=10s;
+
+    server ip5:19600 max_fails=1 fail_timeout=10s;
+    server ip6:19600 max_fails=1 fail_timeout=10s;
+    server ip7:19600 max_fails=1 fail_timeout=10s;
+    server ip8:19600 max_fails=1 fail_timeout=10s;
+    server ip9:19600 max_fails=1 fail_timeout=10s;
+}
+
+
+server {
+    listen 80;
+    server_name api.host.com;
+
+    client_max_body_size 50M;
+    access_log  /data/log/nginx/rest.log api_access;
+    error_log  /data/log/nginx/rest_error.log;
+
+    location /volvo {
+        include /etc/nginx/martin_allow.conf;
+        deny all;
+        proxy_pass_header User-Agent;
+        proxy_set_header Host $http_host;
+        proxy_redirect off;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Scheme $scheme;
+        proxy_next_upstream error timeout invalid_header http_502;
+        proxy_pass http://rest_frontends;
+    }
+
+
+    location /lotus {
+        proxy_pass_header User-Agent;
+        proxy_set_header Host $http_host;
+        proxy_redirect off;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Scheme $scheme;
+        proxy_pass http://rest_frontends;
+    }
+
+}
+
+
+```
+
+
+
+改造之后的 nginx 配置：
+
+```shell
+upstream rest_frontends_volvo {
+    # ip_hash;
+    keepalive 1200;
+    server ip1:19600 max_fails=1 fail_timeout=10s;
+    server ip2:19600 max_fails=1 fail_timeout=10s;
+    server ip3:19600 max_fails=1 fail_timeout=10s;
+    server ip4:19600 max_fails=1 fail_timeout=10s;
+}
+
+upstream rest_frontends_lotus {
+    keepalive 1200;
+    server ip5:19600 max_fails=1 fail_timeout=10s;
+    server ip6:19600 max_fails=1 fail_timeout=10s;
+    server ip7:19600 max_fails=1 fail_timeout=10s;
+    server ip8:19600 max_fails=1 fail_timeout=10s;
+    server ip9:19600 max_fails=1 fail_timeout=10s;
+}
+
+server {
+    listen 80;
+    server_name api.host.com;
+
+    client_max_body_size 50M;
+    access_log  /data/log/nginx/rest.log api_access;
+    error_log  /data/log/nginx/rest_error.log;
+
+    location /volvo {
+        include /etc/nginx/martin_allow.conf;
+        deny all;
+        proxy_pass_header User-Agent;
+        proxy_set_header Host $http_host;
+        proxy_redirect off;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Scheme $scheme;
+        proxy_next_upstream error timeout invalid_header http_502;
+        proxy_pass http://rest_frontends_volvo;
+    }
+
+
+    location /lotus {
+        proxy_pass_header User-Agent;
+        proxy_set_header Host $http_host;
+        proxy_redirect off;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Scheme $scheme;
+        proxy_pass http://rest_frontends_lotus;
+    }
+
+}
+
+```
+
+拆分之后，相当于各个业务功能的后端都是**相互隔离**的，即使某一业务导致后端服务故障，并不会波及其他业务。
+
+# 五、标准化
+
+> 标准化就是引入约束和规范，把各种流程借助对应的制度、工具等进规范化和自动化，尽量减少人为因素造成的故障或错误。
+
+## Git 仓库的标准化
+
+**收缩权限，统一各个项目的 owner**
+
+杜绝以私人身份建立仓库并上线，所有线上项目必须交由各自统一的 owner 进行建立、权限分配、部署和销毁。
+
+**统一分支开发模型**
+
+根据团队的实际情况采用合适的分支开发模型，强制所有成员必须严格按照分支模型进行仓库的管理，降低多人协作造成的混乱。
+
+**统一开发流程**
+
+核心项目全部采用 fork and pull request 开发流程，严格进行代码审核和测试、上线和回滚。
+
+## 环境的标准化
+
+为解决本地开发环境依赖服务过多的问题，搭建专有的 VPN 服务，使得可以在本地连接任意线上测试环境服务,并且统一线上环境、测试环境、本地环境的配置，能够非常轻松对本地任何项目进行开发和调试。
+
+## 部署流程的标准化
+
+简单项目采用 walle 等第三方部署工具部署，复杂项目使用 fabric 完成，为每一个 APP 统一部署流程：
+
+- SQL 检查
+- 表更新
+- 创建 release tag
+- 更新代码
+- 更新依赖
+- 执行 build
+- 重启服务 
+- 服务检测
+
+
+## 团队知识标准化
+
+建立团队知识体系，并且以工具形势进行落地，建立团队内部使用的 wiki 、技术业务文档等，方便新人快速熟悉业务和快速查找。
+
+
+## 故障定位标准化
+
+建立故障 checklist，方便任何不熟悉整套服务体系的人快速定位故障和解决问题

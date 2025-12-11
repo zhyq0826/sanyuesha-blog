@@ -1,0 +1,25 @@
+---
+title: "Consul UI"
+summary: "Consul 还提供了一个 web dashboard 用来查看 service、nodes、health checks，还可以用进行 kv 的 put 和 read，web ui 可独立部署 -ui parameter："
+date: "2018-05-17"
+tags: 
+  - "ui"
+  - "consul"
+group: "consul"
+---
+
+
+Consul 还提供了一个 web dashboard 用来查看 service、nodes、health checks，还可以用进行 kv 的 put 和 read，web ui 可独立部署 [-ui parameter](https://www.consul.io/docs/agent/options.html#_ui)：
+
+```shell
+consul agent -ui
+```
+
+UI 的默认地址是 http://localhost:8500/ui，在线 [demo](http://demo.consul.io/)
+
+Consul 1.1.0 中重新设计了新的 UI，可以设置环境变量 CONSUL_UI_BETA=true 开启。
+
+## 参考资料
+
+- https://www.consul.io/intro/getting-started/ui.html
+

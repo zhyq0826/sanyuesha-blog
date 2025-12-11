@@ -1,0 +1,95 @@
+---
+title: "Consul KV 存储"
+summary: "Consul 除了支持服务配置和发现，集成 Heath check 之外，还支持简单的 KV 存储且易于使用。KV 存储为 consul 赋予了更为丰富的使用场景，比如可以使用 KV store 做配置中心、服务协调、leader 选举等等。"
+date: "2018-05-17"
+tags: 
+  - "kv"
+  - "consul"
+group: "consul"
+---
+
+
+Consul 除了支持服务配置和发现，集成 Heath check 之外，还支持简单的 KV 存储且易于使用。KV 存储为 consul 赋予了更为丰富的使用场景，比如可以使用 KV store 做配置中心、服务协调、leader 选举等等。
+
+## 简单的使用
+
+使用 consul KV store 非常简单，在此我们使用几个简单的 key 来做个演示。Consul 提供了两种方法来存储 KV，一种是 http API，一种是 consul kv cli，为了演示简单我们在此使用 consul cli，更复杂的功能可以参考 [Consul KV HTTP API](https://www.consul.io/api/kv.html)。
+
+现在开始使用 consul 的 kv store，在此我们请求 consul 返回我们要求的 key 的数据：
+
+```shell
+vagrant@n1:~$ consul kv get redis/config/minconns
+Error! No key exists at: redis/config/minconns
+```
+
+正如结果显示，没有此 key 相关的数据，因为我们还没有存储任何东西。现在我们使用 put 创建一个新的 key：
+```shell
+$ consul kv put redis/config/minconns 1
+Success! Data written to: redis/config/minconns
+
+$ consul kv put redis/config/maxconns 25
+Success! Data written to: redis/config/maxconns
+
+$ consul kv put -flags=42 redis/config/users/admin abcd1234
+Success! Data written to: redis/config/users/admin
+
+```
+再次执行 get 命令，会正确返回我们设置的值。
+
+使用 -detailed flag 可以让 consul 更详细的信息：
+```shell
+vagrant@n1:~$ consul kv get -detailed redis/config/minconns
+CreateIndex      6209
+Flags            0
+Key              redis/config/minconns
+LockIndex        0
+ModifyIndex      6209
+Session          -
+Value            1
+```
+
+我们为 Key "redis/config/users/admin" 设置了一个 flag value 是 42，所有的 key 都支持 64-bit int flag value。所有的 client 都可以根据自己需要为 flag 提供一个有意义的值，consul 并不关心这个值是多少。
+
+Consul 还提供了 recurse 选项来显示所有的 key:
+```shell
+vagrant@n1:~$ consul kv get -recurse
+redis/config/maxconns:25
+redis/config/minconns:1
+redis/config/users/admin:abcd1234
+```
+
+删除一个 key 使用 delete 命令：
+```shell
+$ consul kv delete redis/config/minconns
+Success! Deleted key: redis/config/minconns
+```
+
+使用 recurse 选项可以删除指定的 prefix：
+```shell
+$ consul kv delete -recurse redis
+Success! Deleted keys with prefix: redis
+```
+
+更新 value 继续使用 put 命令：
+```
+$ consul kv put foo bar
+$ consul kv get foo
+bar
+$ consul kv put foo zip
+$ consul kv get foo
+zip
+```
+
+Consul 还支持原子操作，使用 Check-And-Set option 即可：
+```shell
+$ consul kv put -cas -modify-index=123 foo bar
+Success! Data written to: foo
+
+$ consul kv put -cas -modify-index=123 foo bar
+Error! Did not write to foo: CAS fail
+```
+第一次修改成功了，第二次修改失败因为 modify-index 已经变更了，不再是 123。
+
+## 参考资料
+
+- https://www.consul.io/intro/getting-started/kv.html

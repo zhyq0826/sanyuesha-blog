@@ -1,0 +1,68 @@
+---
+title: "程序员必须知道的数字"
+summary: "不论是日常写代码还是做架构都免不了和各种各样的数字过招，虽然说不是学精算的不需要那么的数字敏感，但是理解各种数字背后的含义以及它们的差异能够帮助程序员做出更好的决策，以下所有的资料都来自网络整理并经个人的整理评测，欢迎反馈指正。"
+date: "2018-08-16"
+group: "程序人生"
+---
+
+
+不论是日常写代码还是做架构都免不了和各种各样的数字过招，虽然说不是学精算的不需要那么的数字敏感，但是理解各种数字背后的含义以及它们的差异能够帮助程序员做出更好的决策，以下所有的资料都来自网络整理并经个人的整理评测，欢迎反馈指正。
+
+
+## 存储单位
+
+1 bit 是表示信息最小单位，是二进制中一位表示的信息量，也可以理解为一位表示的不同的信息的个数，n bit 可以表示 2^n 种个数
+1 byte = 8 bit = 2^3 bit
+1 kb = 1024 bytes = 2^10 bytes  (硬件厂商普遍用 1000 软件厂商普遍用 1024) 
+1 mb = 1024 kb = 2^20 bytes
+1 g = 1024 mb = 2^30 bytes
+1 tb = 1024 gb
+1 pb = 1024 tb
+1 ASCII码 = 1 byte ，表示如果一个英文字母用 ASCII 码则需要 1 byte 空间存储
+1 个 unicode 英文字符用 utf-8 编码占用 1 byte，1 个 unicode 中文汉字用 utf-8 编码占用 3 bytes
+1 篇 2000 字的中文文章大约需要 2000*3 / 1024 ≈ 6 kb 存储空间
+现代普通计算机的 4 G 内存 = 4\*1024 mb = 2^32 bytes
+1 亿个 64 位的整数占用内存 ≈ 6 G
+
+
+## 时间延迟
+
+1 ns (纳秒) = 10^-9 seconds = 10^-6 ms (百万分之一毫秒)
+1 us (微妙) = 10^-6 seconds = 1,000 ns = 1/1000 ms (千分之一毫秒)
+1 ms (毫秒) = 10^-3 seconds = 1,000 us = 1,000,000 ns
+
+L1 cache reference = 0.5 ns
+L2 cache reference = 4 ns
+Mutex lock/unlock == 17  ns
+Main memory reference  = 100 ns，是 25 倍 L2 cache, 200 倍 L1 cache
+Compress 1K bytes with Zippy = 2,000 ns ≈ 2 us
+Read 1 MB sequentially from SSD = 1,000,000 ns =  1000 us  = 1ms
+Read 1 MB sequentially from memory =  250,000 ns  = 250 us = 0.25ms
+Round trip within same datacenter = 500,000 ns = 500 us = 0.5 ms
+Read 1 MB sequentially from disk = 20,000,000 ns = 20,000 us = 20 ms， 是 80 倍 memory, 20 倍 SSD, 
+Send 1K bytes over 1 Gbps network = 10,000 ns  = 10 us = 0.01 ms 
+Disk seek  = 10,000,000 ns = 10,000 us = 10 ms，是 20 倍 datacenter roundtrip
+
+## 开源软件
+
+**MySQL** 
+一个包含 7 个 varchar(32) fileds，4 个 int(11) feilds，3 个 datetime fields 的表中存储 2000 万数据  ≈ 5 GB
+4 核 6g ssd 机型 5.5 MySQL 的 tps 最高大约是 3.5k 个
+
+**Redis**
+10 万个 64 位整数以 set(key, value) 的方式存储，需要占用约 11 MB 内存
+Intel i7 2.57 GHz set 命令不用 pipline qps ≈ 8 万，使用 pipline 约是 5 倍 ~ 6 倍的性能提升
+
+**rabbitmq**
+Intel i7 2.57 GHz send QPS ≈ 5 万
+
+
+## 参考资料
+
+- https://people.eecs.berkeley.edu/~rcs/research/interactive_latency.html
+- http://highscalability.com/blog/2013/1/15/more-numbers-every-awesome-programmer-must-know.html
+- https://gist.github.com/jboner/2841832
+- https://redis.io/topics/benchmarks
+- https://www.cloudamqp.com/blog/2016-11-18-load-testing-and-performance-measurements-rabbitmq.html
+- https://www.rabbitmq.com/blog/2012/04/25/rabbitmq-performance-measurements-part-2/
+

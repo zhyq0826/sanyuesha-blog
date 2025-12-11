@@ -1,0 +1,109 @@
+---
+title: "如果 SQLAlchemy model 自增主键等于 0"
+summary: "SQLAlchemy 使用 session 生成新的数据根据主键的不同大致有以下几种情况，其中主键是 0 最为特殊。"
+date: "2017-05-25"
+tags: 
+  - "python"
+  - "mysql"
+  - "主键"
+group: "SQLAlchemy"
+---
+
+
+SQLAlchemy 使用 session 生成新的数据根据主键的不同大致有以下几种情况，其中主键是 0 最为特殊。
+
+测试环境
+
+- SQLAlchemy  1.0.9
+- mysql 5.6.27
+- pythonn 2.7
+
+{/* more */}
+
+## 不指定主键
+
+新创建 [SQLAlchemy](http://www.sqlalchemy.org/) ORM model instance 不指定主键，默认是 None
+
+Model
+
+```python
+class Tag(Base):
+    __tablename__ = 'tag'
+    id = Column(Integer, primary_key=True) # 主键自增
+    name = Column(VARCHAR(255), nullable=False)
+    group_id = Column(Integer)
+```
+
+提交之后生成对应的主键
+
+```python
+session = DBSession()
+t = Tag()
+t.name = random.choice('abcdefgjoiuytreqzxcvbnml')
+t.group_id = random.choice([1, 2, 3, 4, 5])
+print t.id # None
+session.add(t)
+session.commit()
+print t.id # 1
+```
+
+## 指定一个已经存在的主键
+
+指定一个已经存在的主键 id，SQLAlchemy 并不会校验该数据是否经在 db table 中有了对应的 row，直接执行 insert 语句
+
+```python
+session = DBSession()
+t = Tag()
+t.id = 1
+t.name = random.choice('abcdefgjoiuytreqzxcvbnml')
+t.group_id = random.choice([1, 2, 3, 4, 5])
+session.add(t)
+session.commit() #提交触发异常
+print t.id
+```
+
+执行报 Duplicate entry for primary 异常，id = 1 的 row 已经存在。
+
+```bash
+sqlalchemy.exc.IntegrityError: (pymysql.err.IntegrityError) (1062, u"Duplicate entry '1' for key 'PRIMARY'") [SQL: u'INSERT INTO tag (id, name, group_id) VALUES (%(id)s, %(name)s, %(group_id)s)'] [parameters: {'group_id': 3, 'id': 1, 'name': 'i'}]
+```
+
+## 指定主键是 0
+
+```python
+session = DBSession()
+t = Tag()
+t.id = 0
+t.name = random.choice('abcdefgjoiuytreqzxcvbnml')
+t.group_id = random.choice([1, 2, 3, 4, 5])
+session.add(t)
+session.commit()
+print t.id # 触发异常
+```
+
+执行报 ObjectDeletedError 
+
+```bash
+sqlalchemy.orm.exc.ObjectDeletedError: Instance '<Tag at 0x10b4df790>' has been deleted, or its row is otherwise not present.
+```
+
+主键是 0 在提交之后再次获取 model 属性值会触发异常，这是由于已经 commit 的 model 的属性属于 expire 的状态，导致 SQLAlchemy 会从 db 中重新 load。由于 mysql 中默认情况下指定 id 是 0 或者 null 都会触发自增主键执行：
+
+```sql
+insert into tag (id, name, group_id)values(0, 'a', 1)
+insert into tag (id, name, group_id)values(null, 'a', 1)
+```
+
+指定主键为 0 实际生成的数据主键并不是 0，而是自增之后的主键。
+
+**不同于 mysql， SQLAlchemy 在指定主键之后实际上会认为主键就是 0，并没有获取实际生成的不为 0 主键，SQLAlchemy 再次 load 数据是按照 id = 0 的主键查找，实际是不存在的**。
+
+mysql 的 [no_auto_value_on_zero](https://dev.mysql.com/doc/refman/5.7/en/sql-mode.html#sqlmode_no_auto_value_on_zero) 控制着自增主键中 id = 0 的行为，默认是关闭的，打开即表示 id = 0 不会触发自增主键的执行。
+
+## 总结
+
+SQLAlchemy 中主键为 0 这一特殊情况导致的问题会在某些场景之下带来不必要的麻烦，解决办法就是：
+
+1. 如果主键属于自增，在 SQLAlchemy 中避免指定主键为 0。
+2. 打开 no_auto_value_on_zero 开关，统一 mysql 和 SQLAlchemy 的行为。
+

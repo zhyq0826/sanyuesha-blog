@@ -1,0 +1,46 @@
+---
+title: "说说 MD5"
+summary: "# 什么是 MD5"
+date: "2017-09-19"
+tags: 
+  - "MD5"
+group: "技术"
+---
+
+
+# 什么是 MD5
+
+MD5 全称是  Message-Digest Algorithm，是一种密码散列函数，可产生一种128位（16字节）的散列值（hash value），MD5 常用于校验数据的完整性以及生成唯一的数据摘要信息。
+
+由于 MD5 被证明无法防止碰撞，也就是会出现两个不一样的数据采用 MD5 加密之后生成相同的摘要，为了的使用场景中提高碰撞的几率，一般会加入一些随机数来保证碰撞的可能性尽可能低。
+
+一般128位的MD5散列被表示为32位十六进制数字。
+
+```python
+>>> import md5
+>>> MD5.new('a').hexdigest()
+'0cc175b9c0f1b6a831c399e269772661'
+```
+
+# 何时使用 MD5
+
+MD5 可以用检验数据的完整性和一致性，因而可以利用 MD5 的这种特点来标识数据的唯一性，在实际开发中 MD5 常被用来
+
+1.爬虫系统中标识 URL 的唯一性
+
+```python
+def hash_url(url):
+    url = url.strip()
+    url = urllib.unquote(url)
+    try:
+        return hashlib.md5(str(url)).hexdigest()
+    except Exception as e:
+        return hashlib.md5(url.encode('utf-8')).hexdigest()
+```
+
+上面的这段函数可以把爬虫抓取的页面的 URL 进行 MD5 之后存储便于进行唯一性校验，处理 url 之前注意要进行空格过滤和解码，保证数据的前后一致性。
+
+
+2.需要唯一性的其他地方
+
+只要涉及需要唯一性的地方都可以尝试使用 MD5，如果某些场景或业务数据量非常大，需要注意对碰撞的检测。

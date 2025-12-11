@@ -1,0 +1,183 @@
+---
+title: "我的 sublime text 配置"
+summary: "我最常用的编辑器是 vi 和 sublime text，vi 多用在服务端，sublime text 常用在桌面环境，我的 sublime 的配置主要包括以下的 package。"
+date: "2018-05-12"
+tags: 
+  - "sublime"
+group: "程序人生"
+---
+
+
+我最常用的编辑器是 vi 和 sublime text，vi 多用在服务端，sublime text 常用在桌面环境，我的 sublime 的配置主要包括以下的 package。
+
+- Anaconda
+- AutoPEP8
+- Boxy Theme
+- BracketHighlighter
+- CSS Format
+- EmberScript
+- Emmet
+- GitGutter
+- GoSublime
+- Handlerbars
+- HTML5
+- HTMLBeautify
+- Insert Nums
+- Jade
+- Javascript Completions
+- Jinja2
+- JsFormat
+- LESS
+- lessc
+- MagincPython
+- Markdown Preview
+- Python Imports Sorter
+- Reactjs
+- Sass
+- Stylus
+- Stylus Clean Completions
+- Swig
+- Terminal
+- Vue Syntax Highlight
+
+## 编辑器主题
+
+编辑主题我用过很多种，一直在换，现在一直在用的是 `Boxy Theme`，用的其中 `Ocean Theme` 可能以后不会再换了。
+
+## Python 
+
+支持 Python 的 package 我用过好几个，直到前年 Anaconda 出现，就一直用的它，支持：
+- Go To Definition
+- 格式化
+- Code Auto Complete
+
+仅仅这些功能的便捷程度就已经超过其他包了，而且稳定性好不怎么出问题，除此之外我还用了：
+- AutoPEP8
+- Python Imports Sorter
+抱住我检查 PEP 的错误和格式化包的导入，非常方便。
+
+使用 Anaconda 时一定要注意配置用户环境:
+
+```json
+{
+    "python_interpreter": "/Users/zhaoyongqiang/python_env/bin/python2.7",
+    "anaconda_linting_behaviour": "save-only",
+    "anaconda_gutter_marks": true,
+}
+```
+帮助 Anaconda 快速找到包。
+
+## Go 支持
+
+GoSublime 是 sublime text 下对 Go 支持最好的包，包括
+- 自动导入
+- 自动补全
+- 格式化
+但是也需要注意配置 GOPATH：
+```json
+{
+    "env": {
+        "PATH": "$HOME/zhyq0826/go/bin:$PATH",
+        "GOPATH": "/Users/zhyq0826/go"
+    }
+}
+```
+
+## 前端
+
+我现在前端写的比较少了，之前从 HTML 到 less 到 Vuejs、Emberjs 再到 ES2015 都没少写，用了一大堆语法支持和自动补全：
+- CSS Format
+- EmberScript
+- Emmet
+- Handlerbars
+- HTML5
+- HTMLBeautify
+- Javascript Completions
+- JsFormat
+- LESS
+- lessc
+- Reactjs
+- Sass
+- Stylus
+- Stylus Clean Completions
+- Swig
+- Vue Syntax Highlight
+JsFormat 这个工具很好用，常用来格式化 JavaScript 和 JSON。
+
+## Git 支持
+
+`GitGutter` 这个工具提供仓库中文件信息的变更，我只需要这个功能，便于在更改文件时可以看到变化之处。
+
+## 打开终端
+
+Terminal 这个工具能够在文件所在处打开 terminal，非常方便快速切入终端
+
+## Markdown Preview
+
+`Markdown Preview` 预览 markdown 文件
+
+## 其他常用配置
+
+1.默认用 space 替代 tab，大小是 4 个 space
+2.User setting 配置：
+```json
+{
+    "always_show_minimap_viewport": true,
+    "binary_file_patterns":
+    [
+        "*.jpg",
+        "*.jpeg",
+        "*.png",
+        "*.gif",
+        "*.ttf",
+        "*.tga",
+        "*.dds",
+        "*.ico",
+        "*.eot",
+        "*.pdf",
+        "*.swf",
+        "*.jar",
+        "*.zip",
+        "node_modules/*",
+        "bower_components/*",
+        "tmp/*"
+    ],
+    "bold_folder_labels": true,
+    "caret_extra_bottom": 1,
+    "caret_extra_top": 1,
+    "caret_extra_width": 1,
+    "caret_style": "blink",
+    "color_scheme": "Packages/Boxy Theme/schemes/Boxy Monokai.tmTheme",
+    "fade_fold_buttons": false,
+    "folder_exclude_patterns":
+    [
+        ".svn",
+        ".git",
+        ".hg",
+        "CVS",
+        "tmp"
+    ],
+    "font_size": 16,
+    "ignored_packages":
+    [
+        "Node Completions",
+        "Python",
+        "Vintage"
+    ],
+    "indent_guide_options":
+    [
+        "draw_normal",
+        "draw_active"
+    ],
+    "line_padding_bottom": 2,
+    "line_padding_top": 2,
+    "overlay_scroll_bars": "enabled",
+    "show_encoding": true,
+    "show_full_path": true,
+    "show_line_endings": true,
+    "theme": "Boxy Ocean.sublime-theme",
+    "translate_tabs_to_spaces": true
+}
+``` 
+字体我喜欢大一点的一般是 16，有些目录在搜索文件时可以排除，用 `folder_exclude_patterns`。
+

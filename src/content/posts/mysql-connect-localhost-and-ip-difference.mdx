@@ -1,0 +1,91 @@
+---
+title: "mysql 不指定 ip 的连接默认都是 localhost"
+summary: "## 问题场景"
+date: "2016-10-14"
+group: "mysql"
+---
+
+
+
+## 问题场景
+
+在本地使用 docker 启动了一个 mysql 容器，并把本地的`33067`端口映射到容器内 mysql 的 `3306`，我们假设容器的 ip 地址是 `172.17.0.2`，使用本地的 mysql 客户端尝试连接容器内部的 mysql 服务。
+
+{/* more */}
+
+
+### 方法 1
+
+由于是绑定本地的 33067 端口，所以在连接时指定端口号即可。
+
+```bash
+mysql -uroot -P33067
+```
+
+此时 mysql-client 实际上进入了本地的 mysql 服务，使用 `status` 命令可以查看
+
+```bash
+Connection id:      49
+Current database:   
+Current user:       root@localhost
+SSL:            Not in use
+Current pager:      stdout
+Using outfile:      ''
+Using delimiter:    ;
+Server version:     5.5.52-0ubuntu0.14.04.1 (Ubuntu)
+Protocol version:   10
+Connection:     Localhost via UNIX socket
+Server characterset:    latin1
+Db     characterset:    latin1
+Client characterset:    utf8
+Conn.  characterset:    utf8
+UNIX socket:        /var/run/mysqld/mysqld.sock
+Uptime:         1 hour 35 min 41 sec
+
+```
+
+connecttion 信息是本地的 unix socket，这样的连接并没有连接到容器内的 mysql。
+
+### 方法 2
+
+尝试指定对应 host 和映射的本地端口，由于映射的是本地端口，所以 host 为 localhost
+
+```bash
+mysql -uroot -hlocalhost -P33067 
+```
+
+依然连接的是本地的 mysql 服务。
+
+
+### 方法 3
+
+直接使用容器的的 ip 地址，默认端口是 3306 
+
+```bash
+mysql -uroot -h172.17.0.2
+```
+
+连接成功，进入容器内部的 mysql 服务。
+
+
+### 方法 4
+
+使用 127.0.0.1 地址，并指定本地映射的端口 33067 
+
+```bash
+mysql -uroot -h127.0.0.1 -P33067 
+```
+
+连接成功，进入容器内部的 mysql 服务。
+
+## 分析
+
+方法 1 和 方法 2 连接的 host 其实都是 localhost（不指定 host，默认是 localhost），此时不论端口指定什么，mysql-client 都尝试使用 unix socket 的通信方式，也就是本地的 socket ，所以如果要连接指定 ip 的 mysql 服务，必须要指定 ip ，即使该 ip 映射的是 localhost。
+
+如上的场景由于容器内的 mysql 服务端口映射到本地的特定端口，即使是这种情况，连接依然需要指定本地 ip 127.0.0.1，而不是本地的 hostname localhost，因为一旦使用了 localhost，mysql-client 就尝试使用本地的 unix socket 连接本地的 mysql 服务。
+
+因而可以得知，mysql 不指定 ip 的连接默认都是 localhost，尝试连接的是本地 mysql 服务，无论端口是什么。
+
+> Beware that by default, the mysql client tries to connect using a unix socket when you tell it to connect to localhost. So do use 127.0.0.1 and not localhost:
+$ mysql -h 127.0.0.1 -P 3306 -u root
+

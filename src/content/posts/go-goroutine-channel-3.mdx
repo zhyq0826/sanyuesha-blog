@@ -1,0 +1,80 @@
+---
+title: "Go goroutine 和 channel 详解 (三) ：unbuffered channel"
+summary: "> 本系列是阅读 \"The Go Programming Language\" 理解和记录。"
+date: "2018-08-14"
+tags: 
+  - "synchronous"
+  - "golang"
+group: "Go 读书笔记"
+---
+
+
+> 本系列是阅读 "The Go Programming Language" 理解和记录。
+
+## Channel 的分类
+
+Channel 根据 capacity 的大小，分为 unbuffered channel 和 buffered channel，在创建 channel 时可以指定 channel 的容量，如果不指定默认是 0，我们称这种 channel 是 unbuffered channel。
+
+## Unbuffered channel 同步特性
+
+在一个 unbuffered channel 上执行 send 操作会阻塞当前的 goroutine 直到另一个 goroutine 对这个 channel 执行 receive 操作，此时发送的 value 通过 channel 进行传递，两个 goroutine 继续后续的执行。相反如果是 receive 操作先执行，则 receive 的 goroutine 阻塞直到有另一个 goroutine 对 channel 执行 send 操作。
+
+**正是因为 unbuffered channel 的这种特性，unbuffered channel 也称之为 synchronous channel**。
+
+
+## Unbuffered channel 实践之一：同步
+
+```go
+package main
+import (
+    "fmt"
+)
+
+func main() {
+    c := make(chan int)
+    go func(){
+        c <- 1
+    }
+    <-c
+    fmt.Println("main goroutine finish ")
+}
+```
+上面的代码展示了利用 unbuffered channel 完成同步的能力，main goroutine 会一直等待直到满足特定条件时才会结束。
+
+## Unbuffered channel 实践之二：pipeline
+
+在 pipeline 的应用场景中，channel 是不同 goroutine 之间传递消息的通道，而且一个 goroutine 输出作为另一个 goroutine 的输入：
+
+![pipeline](https://static.git-star.com/WX20171229-170322.png)
+
+以下代码展示了其用法：
+```go
+func main() {
+    naturals := make(chan int)
+    squares := make(chan int)
+    // Counter
+    go func() {
+        for x := 0; ; x++ {
+            naturals <- x
+        }
+    }()
+    // Squarer
+    go func() {
+        for {
+            x := <-naturals
+            squares <- x * x
+        }
+    }()
+    // Printer (in main goroutine)
+    for {
+        fmt.Println(<-squares)
+    }
+}
+```
+
+naturals 是 Counter 的输出，是 Squarer 的输入，一个 goroutine 的结果作为另一个的输入，各个 goroutine 使用 channel 形成了一个流水线，由于是同步的 channel，一个 goroutine 想要产生输出，必须等待另一个 goroutine，goroutine 之间形成了同步等待关系。
+
+
+## 参考资料
+
+- The Go Programming Language

@@ -1,0 +1,36 @@
+---
+title: "使用 Python bumpversion 轻松实现版本管理"
+summary: "bumpversion 是用来实现 Python package 的包管理工具，它利用 setup.cfg 文件进行文件内的版本信息查找和替换，pypi。"
+date: "2017-09-29"
+tags: 
+  - "bumpversion"
+group: "python"
+---
+
+
+
+bumpversion 是用来实现 Python package 的包管理工具，它利用 setup.cfg 文件进行文件内的版本信息查找和替换，[pypi](https://pypi.org/project/bumpversion/)。
+
+# 小版本 bump minor 
+
+```
+bumpversion --current-version 0.5.1 minor
+```
+
+version 从 0.5.1 --> 0.6.0 
+
+# 大版本 bump major
+
+```
+bumpversion --current-version 1.1.9 major
+```
+
+version 从 1.1.9 --> 2.0.0 
+
+# 补丁修复
+
+```
+bumpversion --current-version 1.1.9 patch
+```
+
+version 从 1.1.9 --> 1.1.10

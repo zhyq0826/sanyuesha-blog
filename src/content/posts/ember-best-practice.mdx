@@ -1,0 +1,74 @@
+---
+title: "Ember 最佳实践"
+summary: "用 Go 写的发布系统前端用的是 ember 做的，之所以用 ember 是因为三年前用 ember 实现了一套做 CMS 的框架，ember-semantci-ui 和 ember-easy-orm，两个东东几乎涵盖了做 CMS 需要的方方面面：数据加载层、loading和消息..."
+date: "2018-12-26"
+tags: 
+  - "ember"
+group: "JavaScript"
+---
+
+
+
+用 Go 写的发布系统前端用的是 ember 做的，之所以用 ember 是因为三年前用 ember 实现了一套做 CMS 的框架，[ember-semantci-ui](https://github.com/wecatch/ember-semantic-ui) 和 [ember-easy-orm](https://github.com/wecatch/ember-easy-orm)，两个东东几乎涵盖了做 CMS 需要的方方面面：数据加载层、loading和消息管理、各种 ui、form 管理等等，其实这几年由于 react 和 vue 发展迅猛，基于 react 和 vue 的 cms 系统已经有不少了，比如 ant design 等，之所以还用 ember 有几个原因：
+
+第一，我是个后端程序员对前端不是特别熟悉，从头开始学习 react 以及 vue 并且做能够做出非常复杂的应用而且可维护性也非常好，时间来不及。
+
+第二，对于前端的东西，我其实很想做到方方面面都能控制到才行，由于之前用 ember 写过 ui 层和 model 层的组件，对数据加载、状态管理、消息管理、form 管理等已经形成了非常成熟的方案，于是就很懒的在替换了。
+
+
+当然如果有着非常成熟的 react 之流的现成方案能用，还是用 react 吧，阿里最近出的 fusion 就很不错。
+
+
+## 先简单聊一下 ember
+
+Ember 这个框架非常的复杂，东西很多，但是文档写的又比较抽象，不太好懂，新版本比之前简化了太多东西，但是还是比较复杂，由于 ember 已经规定好了 route，template，component，controller等应该怎么写，所以一旦懂了之后，基本上就是按部就班实现，而且 ember 自身的规范可以说就是团队的规范，不需要再去另寻最佳实践了。
+
+
+Ember 周边的 plugin 应该没有 react 多，但是由于 Ember 是基于 jQuery 的，所以 jQuery 的插件基本都能用，这是一个优势。
+
+
+## 框架和库
+
+从头开发一个完整的 APP 费时费力，ember 有很多第三方的 plugin 非常好用，提供了一系列的功能
+
+- https://github.com/poteto/ember-cli-flash  消息通知
+- https://github.com/DockYard/ember-composable-helpers  常用 helper
+- https://github.com/wecatch/ember-easy-orm     ORM 层，比 ember-data 简单，和 ember-semantic-ui 紧密结合
+- https://github.com/wecatch/ember-semantic-ui  CMS ui 层
+- https://github.com/jmurphyau/ember-truth-helpers 常用 helper，语法友好
+- https://github.com/thoov/ember-websockets websocket
+- https://github.com/simplabs/ember-simple-auth 权限认证
+
+借助这些第三方框架能够非常快速的实现各种功能
+
+## loading 和网络状态响应
+
+
+Ember 支持在 route 层的 model 解析前后 beforeModel 和 afterModel 挂载 loading hook，也支持全局 route 和各个子 route 挂载自定义 loading，可以说是毫不费力就就可以实现各种 loading，但是一个体验真正好用的 loading 需要能够覆盖数据加载的各个阶段：准备网络请求，发起网络请求，等待响应，解析结果等等，loading 和 加载提示几乎是无缝结合的，loading 结束的时候提示应该根据当前请求的状态立马出来，这样才能给用户以平滑的体验，让整个 APP 显示出活的状态。
+
+为此在 [ember-easy-orm](https://github.com/wecatch/ember-easy-orm) 通过暴露 ajax 请求阶段的各种 hook 来实现 loading 的 start 和 stop 以及消息的及时响应。
+
+
+## 记录问题解决的方案
+
+
+Ember 是大而全的框架，而且受众比较小，一旦出现问题真的就是考验解决问题的能力，因此一旦解决了某个问题，最好立马记录下来，以防下次的时候遗忘。
+
+我在 https://github.com/wecatch/emberjs-guide/ 写了一个 guide 用来记录 ember 开发的方方面面，感兴趣的可以参考一下。
+
+
+## 理解 component 的生命周期
+
+维护性好的 ember APP 大量的逻辑实现都是封装在 component 中，因此理解 component 的整个生命周期并且能在各个阶段正确实现业务逻辑是 component 可维护性高的一个重要前提。
+
+官方 guide 对 component lifecycle 有详细说明 https://guides.emberjs.com/release/components/the-component-lifecycle/
+
+## 做好 model 状态管理
+
+
+如果 APP form 很多，非常容易变得混乱，所以最好能对每个 form 都显示定义，并且通过 model 和 form 一一映射起来，需要变更更改 model 和 对应的 form 文件即可。
+
+
+## 让后端 APP 支持 ember 的路由
+
+Ember 的路由实现是在前端做的，也就是说所有路由规则是 JavaScript 做的拦截，后端应用并没有定义这些路由，如果后端发生 404 需要保证 404 的页面渲染能进入 ember APP 的页面，这样才能触发前端的路由，所以不论你的后端是 Python 还是 Go 都需要做好 404 状态的渲染。

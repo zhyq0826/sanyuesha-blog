@@ -1,0 +1,230 @@
+---
+title: "Consul 安装和基本使用"
+summary: "## 什么是 consul"
+date: "2017-11-15"
+tags: 
+  - "consul"
+group: "consul"
+---
+
+
+## 什么是 consul 
+
+[Consul](https://www.consul.io/) 是一个服务配置和发现工具，它包含的主要特性有：
+
+### 服务发现
+
+通过 DNS 或 HTTP 对依赖的服务的进行发现。
+
+### 健康检查
+
+Consul clients 能够提供很多种表示服务健康状态的指标，包括服务请求状态，节点内存使用情况等，
+路由会依赖这些信息进行服务选择。
+
+### KV 存储
+
+Consul 支持 KV Store，application 可以利用其用来做动态配置、特性标识存储、节点选举、协调等，Consul 的 KV 
+通过 HTTP API 调用，非常方便使用。
+
+### 多数据中心
+
+Consul 支持多数据中心，夸机房。
+
+
+## Consul 的基本概念
+
+### Agent
+
+Consul 是一个分布式，高可用的系统，组成 Consul 服务的每个节点都是一个 agent，agent 可以 server 或 client 的模式启动
+
+### Client
+
+负责转发所有的 RPC 到 server 节点，本身无状态且轻量级，因此可以部署大量的 client 节点
+
+### Server
+
+负责的数据存储和数据的复制集，一般 Consul server 由 3-5 个结点组成来达到高可用，server 之间能够进行相互选举。一个 datacenter 推荐至少有一个 Consul server 的集群。
+
+![](https://static.git-star.com/20160827175251975.png)
+
+## Agent 的生命周期
+
+当 agent 第一次创建，它并不知道 cluster 中的任何节点，为了发现其它节点，它必须加入到 cluster 中，这是通过 **join** 命令根据 agent 启动时的配置信息自动进行的。一旦节点加入，节点信息会被广播到整个 cluster，最终所有节点都会感知到对方。**如果 agent 是一个 server，其它 server 就会开始向它复制数据**。
+
+假如发生了网络故障，某些节点可能不可达。在这种情况下，不可达的节点被标记为 failed，由于没有办法区分究竟是网络故障还是 agent 自身发生了 crash，二者不区分对待。**一旦节点信息被标记为 failed，它的信息被记录到 service catalog 中**。
+
+当节点因为某种原因离开了 cluster，cluster 标记节点为 having left，**所有和节点相关的服务会立即注销**，如果 agent 是 server，replication 会停止。
+
+## 安装和启动
+
+Consul 使用 Go 编写，用 binary package 发布，可以非常容易安装和使用，在此页面 
+https://www.consul.io/downloads.html 下载所需平台的包，下载对应的 binary 包解压并且配置 consul binary 包对应的 Path 即可使用。
+
+- [linux path 配置](https://stackoverflow.com/questions/14637979/how-to-permanently-set-path-on-linux)
+- [windows path 配置](https://stackoverflow.com/questions/1618280/where-can-i-set-path-to-make-exe-on-windows)
+
+设置完 path 即可进行测试:
+
+```shell
+consul
+Usage: consul [--version] [--help] <command> [<args>]
+
+Available commands are:
+    agent          Runs a Consul agent
+    catalog        Interact with the catalog
+    event          Fire a new event
+    exec           Executes a command on Consul nodes
+    force-leave    Forces a member of the cluster to enter the "left" state
+    info           Provides debugging information for operators.
+    join           Tell Consul agent to join cluster
+    keygen         Generates a new encryption key
+    keyring        Manages gossip layer encryption keys
+    kv             Interact with the key-value store
+    leave          Gracefully leaves the Consul cluster and shuts down
+    lock           Execute a command holding a lock
+    maint          Controls node or service maintenance mode
+    members        Lists the members of a Consul cluster
+    monitor        Stream logs from a Consul agent
+    operator       Provides cluster-level tools for Consul operators
+    reload         Triggers the agent to reload configuration files
+    rtt            Estimates network round trip time between nodes
+    snapshot       Saves, restores and inspects snapshots of Consul server state
+    validate       Validate config files/directories
+    version        Prints the Consul version
+    watch          Watch for changes in Consul
+```
+
+### 启动 Consul agent
+
+Consul agent 启动之后 Consul 的服务才算是真正的建立了，agent 可以以 client 或 server 的形式启动，在一个 datacenter 中至少有一个 server，通常情况下推荐配置 3-5 个 server。
+
+Server 启动完毕之后，就可以把其他 agent 以 client 的形式启动。**Client 负责注册服务，健康检查，转发请求**。
+
+为了测试方便，我们以 dev 的模式启动 agent。
+```shell
+consul agent -dev -node=zhaoyongqiang
+==> Starting Consul agent...
+==> Consul agent running!
+           Version: 'v1.0.0'
+           Node ID: '99fa5591-60cb-cd6f-2b82-046d63b50cbe'
+         Node name: 'zhaoyongqiangdeiMac.local'
+        Datacenter: 'dc1' (Segment: '<all>')
+            Server: true (Bootstrap: false)
+       Client Addr: [127.0.0.1] (HTTP: 8500, HTTPS: -1, DNS: 8600)
+      Cluster Addr: 127.0.0.1 (LAN: 8301, WAN: 8302)
+           Encrypt: Gossip: false, TLS-Outgoing: false, TLS-Incoming: false
+
+==> Log data will now stream in as it occurs:
+
+    2017/11/15 18:37:06 [DEBUG] Using random ID "99fa5591-60cb-cd6f-2b82-046d63b50cbe" as node ID
+    2017/11/15 18:37:06 [INFO] raft: Initial configuration (index=1): [{Suffrage:Voter ID:99fa5591-60cb-cd6f-2b82-046d63b50cbe Address:127.0.0.1:8300}]
+    2017/11/15 18:37:06 [INFO] raft: Node at 127.0.0.1:8300 [Follower] entering Follower state (Leader: "")
+    2017/11/15 18:37:06 [INFO] serf: EventMemberJoin: zhaoyongqiangdeiMac.local.dc1 127.0.0.1
+    2017/11/15 18:37:06 [INFO] serf: EventMemberJoin: zhaoyongqiangdeiMac.local 127.0.0.1
+    2017/11/15 18:37:06 [INFO] consul: Handled member-join event for server "zhaoyongqiangdeiMac.local.dc1" in area "wan"
+    2017/11/15 18:37:06 [INFO] consul: Adding LAN server zhaoyongqiangdeiMac.local (Addr: tcp/127.0.0.1:8300) (DC: dc1)
+    2017/11/15 18:37:06 [INFO] agent: Started DNS server 127.0.0.1:8600 (tcp)
+    2017/11/15 18:37:06 [INFO] agent: Started DNS server 127.0.0.1:8600 (udp)
+    2017/11/15 18:37:06 [INFO] agent: Started HTTP server on 127.0.0.1:8500 (tcp)
+    2017/11/15 18:37:06 [WARN] raft: Heartbeat timeout from "" reached, starting election
+    2017/11/15 18:37:06 [INFO] raft: Node at 127.0.0.1:8300 [Candidate] entering Candidate state in term 2
+    2017/11/15 18:37:06 [DEBUG] raft: Votes needed: 1
+    2017/11/15 18:37:06 [DEBUG] raft: Vote granted from 99fa5591-60cb-cd6f-2b82-046d63b50cbe in term 2. Tally: 1
+    2017/11/15 18:37:06 [INFO] raft: Election won. Tally: 1
+    2017/11/15 18:37:06 [INFO] raft: Node at 127.0.0.1:8300 [Leader] entering Leader state
+    2017/11/15 18:37:06 [INFO] consul: cluster leadership acquired
+    2017/11/15 18:37:06 [INFO] consul: New leader elected: zhaoyongqiangdeiMac.local
+    2017/11/15 18:37:06 [DEBUG] consul: Skipping self join check for "zhaoyongqiangdeiMac.local" since the cluster is too small
+    2017/11/15 18:37:06 [INFO] consul: member 'zhaoyongqiangdeiMac.local' joined, marking health alive
+    2017/11/15 18:37:07 [INFO] agent: Synced node info
+    2017/11/15 18:38:06 [DEBUG] consul: Skipping self join check for "zhaoyongqiangdeiMac.local" since the cluster is too small
+    2017/11/15 18:38:07 [DEBUG] agent: Node info in sync
+    2017/11/15 18:39:06 [DEBUG] manager: Rebalanced 1 servers, next active server is zhaoyongqiangdeiMac.local.dc1 (Addr: tcp/127.0.0.1:8300) (DC: dc1)
+    2017/11/15 18:39:06 [DEBUG] consul: Skipping self join check for "zhaoyongqiangdeiMac.local" since the cluster is too small
+    2017/11/15 18:39:47 [DEBUG] agent: Node info in sync
+```
+
+**注意 OS X 用户：Consul 使用 hostname 做 node name，如果 node name 包含句点，会导致 DNS 无法工作，所以需要显式设置 node name 用 -node flag**
+
+agent 启动之后输出的主要信息包括：
+
+- Node name - 唯一的节点名称，可以通过 -node 更改
+- Datacenter - 数据中心名称，可以通过 -datacenter 更改
+- Server 表明 - Agent 是否以 server 的形式启用
+- Client Addr - Client 使用的地址和端口
+- Cluster Addr - 在 Cluster 各个 agent 通信使用的地址和端口
+
+### Consul 集群成员
+
+使用 `consul members` 命令可以查看 cluster 中所有 node 的信息，执行此命令你可以看到已经在集群中的成员，输出包含：
+
+- Node 节点名称
+- Address 启动的地址
+- Status 节点健康状态
+- Type 节点类型
+
+```shell
+Node           Address         Status  Type    Build  Protocol  DC   Segment
+zhaoyongqiang  127.0.0.1:8301  alive   server  1.0.0  2         dc1  <all>
+```
+
+可以使用 `-detailed` flag 获取更详细的信息。
+
+members 命令是基于 [gossip protocol](https://www.consul.io/docs/internals/gossip.html)，该协议属于最终一致性。这意味着，在任何时间通过从当前 agent 获取的信息并不一定是当前 server 的状态，为了获取节点的最新信息，可以 HTTP API 。
+
+```shell
+curl localhost:8500/v1/catalog/nodes
+[
+    {
+        "ID": "fc63fe61-00b4-92fe-9625-e88b804c23ea",
+        "Node": "zhaoyongqiang",
+        "Address": "127.0.0.1",
+        "Datacenter": "dc1",
+        "TaggedAddresses": {
+            "lan": "127.0.0.1",
+            "wan": "127.0.0.1"
+        },
+        "Meta": {
+            "consul-network-segment": ""
+        },
+        "CreateIndex": 5,
+        "ModifyIndex": 6
+    }
+]
+```
+
+除此以外还可以使用 DNS Interface 查询，注意查询 DNS 时必须要指定到当前 agent 的 DNS server，默认是启动在 8600 端口的。
+
+```shell
+dig @127.0.0.1 -p 8600 zhaoyongqiang.node.consul
+; <<>> DiG 9.8.3-P1 <<>> @127.0.0.1 -p 8600 zhaoyongqiang.node.consul
+; (1 server found)
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 49030
+;; flags: qr aa rd; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 0
+;; WARNING: recursion requested but not available
+
+;; QUESTION SECTION:
+;zhaoyongqiang.node.consul. IN  A
+
+;; ANSWER SECTION:
+zhaoyongqiang.node.consul. 0    IN  A   127.0.0.1
+
+;; Query time: 0 msec
+;; SERVER: 127.0.0.1#8600(127.0.0.1)
+;; WHEN: Wed Nov 15 18:51:20 2017
+;; MSG SIZE  rcvd: 59
+```
+
+### 停止 agent
+
+使用 Ctrl-C 停止启动的 agent，一旦 agent 终止，这个 node 将会从 cluster 中移除。
+
+如果 agent 的退出是 gracefully 的，Consule 会通知 cluster 中的其它成员该节点离线了。 如果强制停止 agent，其它 agent 会自动检测失联的 agent 并且从 cluster 中移除，如果一个 member 失联出故障了，健康状态会标志位变成 critical，但是其并不会从 catalog 移除。Consul 会在该成员下次上线之后重新连接，这种机制能保证能从特定的网络故障中恢复。
+
+如果 agent 是 server 模式启动的，graceful 移除可以避免潜在的存储问题。如何安全的添加和移除节点见 [guides section](https://www.consul.io/docs/guides/index.html)。
+
+## **参考资料**
+
+- https://www.consul.io/intro/getting-started/agent.html
