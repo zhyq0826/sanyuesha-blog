@@ -1,0 +1,17 @@
+---
+import { formatDate } from "../utils/date";
+const { date, tags = [], group } = Astro.props;
+---
+
+<div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;" class="muted">
+  <span>{formatDate(date)}</span>
+  {group && <span class="pill">{group}</span>}
+  {tags.length > 0 && (
+    <span style="display:flex;gap:0.35rem;align-items:center;flex-wrap:wrap;">
+      {tags.map((tag: string) => (
+        <span style="background:rgba(107,114,128,0.12);padding:0.2rem 0.55rem;border-radius:999px;font-size:0.85rem;">#{tag}</span>
+      ))}
+    </span>
+  )}
+</div>
+

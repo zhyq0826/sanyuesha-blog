@@ -1,0 +1,80 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import PostMeta from "../../components/PostMeta.astro";
+import Comments from "../../components/Comments";
+import { commentConfig, siteMeta } from "../../config/site";
+import { getCollection } from "astro:content";
+
+export async function getStaticPaths() {
+  const [posts, insights] = await Promise.all([getCollection("posts"), getCollection("insights")]);
+  return [...posts, ...insights].map((entry) => ({
+    params: { slug: entry.slug },
+    props: { entrySlug: entry.slug }
+  }));
+}
+
+const { slug } = Astro.params;
+const { entrySlug } = Astro.props;
+const [posts, insights] = await Promise.all([getCollection("posts"), getCollection("insights")]);
+const all = [...posts, ...insights];
+const entry = all.find((item) => item.slug === entrySlug || item.slug === slug);
+
+if (!entry) {
+  throw new Error(`未找到文章：${slug}`);
+}
+
+const { Content } = await entry.render();
+
+const related = posts
+  .filter(
+    (p) =>
+      p.slug !== entry.slug &&
+      p.data.tags.some((tag) => entry.data.tags?.includes(tag))
+  )
+  .slice(0, 3);
+---
+
+<BaseLayout title={`${entry.data.title} | ${siteMeta.title}`} description={entry.data.summary}>
+  <article class="card" style="padding: 1.75rem;">
+    <header style="display:grid;gap:0.5rem;">
+      <p class="pill" style="justify-self:start;">{entry.data.group || "博客"}</p>
+      <h1 style="margin:0;">{entry.data.title}</h1>
+      <PostMeta date={entry.data.date} tags={entry.data.tags} group={entry.data.group} />
+    </header>
+
+    <div style="margin-top:1.5rem;line-height:1.8;">
+      <Content />
+    </div>
+  </article>
+
+  {related.length > 0 && (
+    <section style="margin: 2rem 0;">
+      <div class="section-title">
+        <span>相关文章</span>
+      </div>
+      <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));">
+        {related.map((post) => (
+          <article class="card">
+            <a href={`/blog/${post.slug}`} style="font-weight:700;">{post.data.title}</a>
+            <p class="muted" style="margin:0.5rem 0 0.75rem;">{post.data.summary}</p>
+            <PostMeta date={post.data.date} tags={post.data.tags} group={post.data.group} />
+          </article>
+        ))}
+      </div>
+    </section>
+  )}
+
+  <section style="margin: 2rem 0;">
+    <div class="section-title">
+      <span>评论</span>
+    </div>
+    <Comments
+      client:load
+      repo={commentConfig.repo}
+      issueTerm={commentConfig.issueTerm}
+      label={commentConfig.label}
+      theme={commentConfig.theme}
+    />
+  </section>
+</BaseLayout>
+

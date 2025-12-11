@@ -1,0 +1,30 @@
+---
+import PostMeta from "./PostMeta.astro";
+import type { CollectionEntry } from "astro:content";
+
+const { items = [], title = "文章", actionHref, actionText = "更多" } = Astro.props as {
+  items: CollectionEntry<"posts" | "insights">[];
+  title?: string;
+  actionHref?: string;
+  actionText?: string;
+};
+---
+
+<section style="margin: 1.5rem 0;">
+  <div class="section-title">
+    <span>{title}</span>
+    {actionHref && <a href={actionHref}>{actionText} →</a>}
+  </div>
+  <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));">
+    {items.map((item) => (
+      <article class="card">
+        <a href={`/blog/${item.slug}`} style="display:block; margin-bottom:0.75rem; font-weight:700; letter-spacing:-0.01em; font-size:1.05rem;">
+          {item.data.title}
+        </a>
+        <p style="margin:0 0 0.75rem;color:#4b5563;line-height:1.5;">{item.data.summary}</p>
+        <PostMeta date={item.data.date} tags={item.data.tags} group={item.data.group} />
+      </article>
+    ))}
+  </div>
+</section>
+

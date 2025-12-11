@@ -1,0 +1,25 @@
+---
+title: 深入理解 React 的渲染
+summary: React 如何将组件翻译成 DOM tree，涉及 reconcile、commit 与常见性能优化思路。
+date: 2024-09-03
+tags:
+  - react
+  - rendering
+  - performance
+group: 技术分享
+featured: true
+---
+
+React 是一个 UI Library，用来把组件翻译成 DOM。流程可抽象为两个阶段：
+
+1. **Render/Reconcile**：对比虚拟树，计算需要变更的节点与属性。
+2. **Commit**：把变更应用到 DOM（或宿主），同步副作用。
+
+常见优化方向：
+
+- 合理拆分组件、用 `memo` 避免不必要渲染
+- 使用 `useTransition`、`Suspense` 改善交互流畅性
+- 列表类组件关注 key 与分页/虚拟化
+
+接下来会在站点里持续记录实践案例。
+

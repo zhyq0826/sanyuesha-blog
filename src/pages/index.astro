@@ -1,0 +1,106 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import PostList from "../components/PostList.astro";
+import { siteMeta } from "../config/site";
+import { getCollection } from "astro:content";
+import { formatDate } from "../utils/date";
+
+const [posts, insights, projects, tools] = await Promise.all([
+  getCollection("posts"),
+  getCollection("insights"),
+  getCollection("projects"),
+  getCollection("tools")
+]);
+
+const latestPosts = posts.sort((a, b) => +b.data.date - +a.data.date).slice(0, 3);
+const latestInsights = insights.sort((a, b) => +b.data.date - +a.data.date).slice(0, 3);
+const featuredProjects = projects.filter((p) => p.data.status !== "archived").slice(0, 3);
+const featuredTools = tools.slice(0, 3);
+---
+
+<BaseLayout title={siteMeta.title} description={siteMeta.description} hero={true}>
+  <section class="grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+    <div class="card">
+      <div class="pill">前沿资讯</div>
+      <h3 style="margin:0.5rem 0 0;">捕捉技术趋势</h3>
+      <p class="muted">快速浏览精选资讯，带链接和思考点。</p>
+      <a href="/insights">查看资讯 →</a>
+    </div>
+    <div class="card">
+      <div class="pill">技术分享</div>
+      <h3 style="margin:0.5rem 0 0;">Markdown/MDX 驱动</h3>
+      <p class="muted">文章分组、时间线、代码高亮、外部评论。</p>
+      <a href="/blog">进入博客 →</a>
+    </div>
+    <div class="card">
+      <div class="pill">作品 & 工具</div>
+      <h3 style="margin:0.5rem 0 0;">展示与下载</h3>
+      <p class="muted">项目案例、工具发布与 changelog。</p>
+      <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+        <a href="/projects">作品 →</a>
+        <a href="/tools">工具 →</a>
+      </div>
+    </div>
+  </section>
+
+  <PostList title="最新博客" items={latestPosts} actionHref="/blog" />
+
+  <section style="margin: 2rem 0;">
+    <div class="section-title">
+      <span>前沿资讯</span>
+      <a href="/insights">更多 →</a>
+    </div>
+    <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));">
+      {latestInsights.map((item) => (
+        <article class="card">
+          <a href={`/blog/${item.slug}`} style="font-weight:700;">{item.data.title}</a>
+          <p class="muted" style="margin:0.5rem 0 0.75rem;">{item.data.summary}</p>
+          <div class="muted" style="font-size:0.9rem;">{formatDate(item.data.date)}</div>
+        </article>
+      ))}
+    </div>
+  </section>
+
+  <section style="margin: 2rem 0;">
+    <div class="section-title">
+      <span>作品</span>
+      <a href="/projects">全部 →</a>
+    </div>
+    <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));">
+      {featuredProjects.map((item) => (
+        <article class="card">
+          <div class="pill" style="margin-bottom:0.35rem;">{item.data.status}</div>
+          <h3 style="margin:0;">{item.data.title}</h3>
+          <p class="muted">{item.data.summary}</p>
+          <div style="display:flex;gap:0.75rem;flex-wrap:wrap;font-size:0.95rem;">
+            {item.data.link && <a href={item.data.link}>在线预览</a>}
+            {item.data.repo && <a href={item.data.repo}>仓库</a>}
+          </div>
+        </article>
+      ))}
+    </div>
+  </section>
+
+  <section style="margin: 2rem 0;">
+    <div class="section-title">
+      <span>工具</span>
+      <a href="/tools">全部 →</a>
+    </div>
+    <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));">
+      {featuredTools.map((item) => (
+        <article class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <h3 style="margin:0;">{item.data.title}</h3>
+            <span class="pill">v{item.data.version}</span>
+          </div>
+          <p class="muted">{item.data.summary}</p>
+          <div style="display:flex;gap:0.75rem;flex-wrap:wrap;font-size:0.95rem;">
+            {item.data.download && <a href={item.data.download}>下载</a>}
+            {item.data.link && <a href={item.data.link}>说明</a>}
+          </div>
+        </article>
+      ))}
+    </div>
+  </section>
+</BaseLayout>
+

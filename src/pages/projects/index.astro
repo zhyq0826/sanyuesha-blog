@@ -1,0 +1,27 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { getCollection } from "astro:content";
+import { formatDate } from "../../utils/date";
+
+const projects = (await getCollection("projects")).sort((a, b) => +b.data.date - +a.data.date);
+---
+
+<BaseLayout title="作品 | 三月沙" description="个人作品与项目案例展示。">
+  <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));">
+    {projects.map((item) => (
+      <article class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <h2 style="margin:0;">{item.data.title}</h2>
+          <span class="pill">{item.data.status}</span>
+        </div>
+        <p class="muted" style="margin:0.35rem 0 0.75rem;">{item.data.summary}</p>
+        <div class="muted" style="font-size:0.9rem;">{formatDate(item.data.date)}</div>
+        <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
+          {item.data.link && <a href={item.data.link}>在线预览</a>}
+          {item.data.repo && <a href={item.data.repo}>仓库</a>}
+        </div>
+      </article>
+    ))}
+  </div>
+</BaseLayout>
+

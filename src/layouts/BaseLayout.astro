@@ -1,0 +1,51 @@
+---
+import "../styles/global.css";
+
+const { title = "三月沙", description = "个人前端与产品思考", hero = false } = Astro.props;
+---
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+  </head>
+  <body>
+    <header style="padding: 18px 0;">
+      <div class="container" style="display:flex;align-items:center;justify-content:space-between;gap:1rem;">
+        <a href="/" style="font-weight:800;font-size:1.2rem;letter-spacing:-0.02em;">三月沙</a>
+        <nav style="display:flex;gap:1rem;align-items:center;font-size:0.95rem;">
+          <a href="/timeline">时间线</a>
+          <a href="/blog">博客</a>
+          <a href="/insights">前沿资讯</a>
+          <a href="/projects">作品</a>
+          <a href="/tools">工具</a>
+        </nav>
+      </div>
+    </header>
+
+    {hero && (
+      <section style="padding: 30px 0 10px;">
+        <div class="container card" style="display:grid;gap:0.75rem;background:linear-gradient(135deg,#eef2ff,#fdf2f8);">
+          <div class="pill">思考 · 分享 · 构建</div>
+          <h1 style="margin:0;font-size:2rem;letter-spacing:-0.02em;">{title}</h1>
+          <p style="margin:0;color:#4b5563;max-width:720px;">{description}</p>
+        </div>
+      </section>
+    )}
+
+    <main class="container" style="padding: 16px 0 64px;">
+      <slot />
+    </main>
+
+    <footer style="padding: 24px 0;border-top:1px solid rgba(0,0,0,0.05);margin-top:32px;">
+      <div class="container" style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:1rem;color:#6b7280;font-size:0.9rem;">
+        <span>© {new Date().getFullYear()} 三月沙 · 前端与产品思考</span>
+        <span>构建于 Astro + React · Markdown/MDX 驱动</span>
+      </div>
+    </footer>
+  </body>
+</html>
+
