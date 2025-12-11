@@ -62,11 +62,18 @@ npm run preview
 
 ```mermaid
 graph TD
-  contentFS[Astro Content Collections] --> pages[Pages (列表/时间线/详情)]
-  pages --> blogList[Blog 分组]
-  pages --> timeline[时间线]
-  pages --> detail[详情 + 评论]
-  detail --> utterances[Utterances]
-  contentFS --> otherViews[Projects/Tools/Insights]
+  contentFS["AstroContentCollections"]
+  pages["Pages列表时间线详情"]
+  blogList["Blog分组"]
+  timeline["时间线"]
+  detail["详情+评论"]
+  utterances["Utterances"]
+  otherViews["Projects/Tools/Insights"]
+  contentFS --> pages
+  pages --> blogList
+  pages --> timeline
+  pages --> detail
+  detail --> utterances
+  contentFS --> otherViews
 ```
 
