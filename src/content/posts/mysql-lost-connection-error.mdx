@@ -10,7 +10,7 @@ group: "mysql"
 
 MySQL 在线上的一个新的部署的服务中报：
 
-```mysql
+```sql
 pymysql.err.OperationalError (2013, 'Lost connection to MySQL server during query')
 ```
 
@@ -64,7 +64,7 @@ pymysql.err.OperationalError (2013, 'Lost connection to MySQL server during quer
 
 MySQL 官方有上百个参数，既然是触发某种条件，猜测可能是某个超时设置，查看所有超时相关参数:
 
-```mysql
+```sql
 show variables like '%timeout%';
 
 connect_timeout	10

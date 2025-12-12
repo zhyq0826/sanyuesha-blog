@@ -1,12 +1,43 @@
 ---
-import BaseLayout from "../layouts/BaseLayout.astro";
-import TimelineComponent from "../components/Timeline.astro";
-import { getCollection } from "astro:content";
+import Layout from "~/layouts/Layout.astro";
+import { getSortedPosts, dateString } from "~/utils";
 
-const posts = (await getCollection("posts")).sort((a, b) => +b.data.date - +a.data.date);
+const posts = await getSortedPosts();
+const timeline = [...posts].reverse();
 ---
 
-<BaseLayout title="时间线 | 三月沙" description="按时间浏览全部文章与更新。">
-  <TimelineComponent items={posts} />
-</BaseLayout>
+<Layout title="Timeline" description="按时间查看全部文章">
+  <section class="space-y-5">
+    <h1 class="text-3xl font-semibold text-heading1">Timeline</h1>
+    <div class="space-y-3">
+      {timeline.map((post) => (
+        <article class="border border-foreground/12 rounded-xl p-4 bg-foreground/2 hover:border-accent/30 transition-colors">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:gap-3 text-sm text-foreground/80">
+            <time class="min-w-32">{dateString(post.data.published)}</time>
+            {post.data.tags?.length ? (
+              <div class="flex flex-wrap gap-2">
+                {post.data.tags.map((tag) => (
+                  <span class="rounded-full px-3 py-1 text-xs border border-foreground/16 bg-foreground/3">
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+          </div>
+          <h2 class="text-xl font-semibold mt-2">
+            <a href={`/posts/${post.id}`}># {post.data.title}</a>
+          </h2>
+          <p class="mt-2 text-foreground/80">
+            {post.data.description ?? post.data.summary}
+          </p>
+        </article>
+      ))}
+    </div>
+    {timeline.length === 0 && (
+      <div class="border border-foreground/12 rounded-xl p-5 text-foreground/70">
+        暂无时间线数据。
+      </div>
+    )}
+  </section>
+</Layout>
 

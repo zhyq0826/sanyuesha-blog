@@ -1,27 +1,52 @@
 ---
-import BaseLayout from "../../layouts/BaseLayout.astro";
+import Layout from "~/layouts/Layout.astro";
 import { getCollection } from "astro:content";
-import { formatDate } from "../../utils/date";
+import { dateString } from "~/utils";
 
-const projects = (await getCollection("projects")).sort((a, b) => +b.data.date - +a.data.date);
+const projects = (
+  await getCollection("projects", ({ data }) =>
+    import.meta.env.PROD ? data.draft !== true : true
+  )
+).sort((a, b) => (a.data.date < b.data.date ? 1 : -1));
 ---
 
-<BaseLayout title="作品 | 三月沙" description="个人作品与项目案例展示。">
-  <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));">
+<Layout title="Projects" description="正在做与已发布的项目">
+  <section class="space-y-5">
+    <h1 class="text-3xl font-semibold text-heading1">Projects</h1>
     {projects.map((item) => (
-      <article class="card">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <h2 style="margin:0;">{item.data.title}</h2>
-          <span class="pill">{item.data.status}</span>
+      <article class="border border-foreground/12 rounded-xl p-5 bg-foreground/2 hover:border-accent/30 transition-colors">
+        <div class="text-sm text-foreground/80">{dateString(item.data.date)}</div>
+        <h2 class="text-2xl font-semibold mt-2"># {item.data.title}</h2>
+        <p class="mt-3 text-foreground/80">{item.data.summary}</p>
+        <div class="flex flex-wrap gap-2 mt-3 items-center text-sm text-foreground/80">
+          <span class="rounded-full px-3 py-1 border border-foreground/16 bg-foreground/3 uppercase tracking-wide text-xs">
+            {item.data.status}
+          </span>
+          {item.data.tags?.map((tag) => (
+            <span class="rounded-full px-3 py-1 border border-foreground/16 bg-foreground/3">
+              #{tag}
+            </span>
+          ))}
         </div>
-        <p class="muted" style="margin:0.35rem 0 0.75rem;">{item.data.summary}</p>
-        <div class="muted" style="font-size:0.9rem;">{formatDate(item.data.date)}</div>
-        <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
-          {item.data.link && <a href={item.data.link}>在线预览</a>}
-          {item.data.repo && <a href={item.data.repo}>仓库</a>}
+        <div class="flex flex-wrap gap-3 mt-4 text-sm">
+          {item.data.link && (
+            <a class="button" href={item.data.link} target="_blank" rel="noreferrer">
+              Demo
+            </a>
+          )}
+          {item.data.repo && (
+            <a class="button" href={item.data.repo} target="_blank" rel="noreferrer">
+              Repo
+            </a>
+          )}
         </div>
       </article>
     ))}
-  </div>
-</BaseLayout>
+    {projects.length === 0 && (
+      <div class="border border-foreground/12 rounded-xl p-5 text-foreground/70">
+        暂无项目。
+      </div>
+    )}
+  </section>
+</Layout>
 

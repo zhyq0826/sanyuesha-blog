@@ -109,7 +109,7 @@ mysql>
 
 然后我们把这个值改为 10：
 
-```mysql
+```sql
 mysql> SET @@auto_increment_increment=10;
 Query OK, 0 rows affected (0.05 sec)
 
@@ -127,7 +127,7 @@ mysql>
 
 然后我们创建一个表进行测试并且插入一些数据：
 
-```mysql
+```sql
 mysql> CREATE TABLE `test_auto_increment2` (
     ->   `id` bigint(11) unsigned NOT NULL AUTO_INCREMENT,
     ->   PRIMARY KEY (`id`)
@@ -155,7 +155,7 @@ mysql>
 
 **auto_increment_offset** 这个变量决定了自增列的起始值，接着在刚才我们打开的 session 中设置这个值：
 
-```mysql
+```sql
 mysql> SET @@auto_increment_offset=5;
 Query OK, 0 rows affected (0.02 sec)
 mysql> show variables like 'auto_inc%';
@@ -170,7 +170,7 @@ mysql> show variables like 'auto_inc%';
 
 然后插入一些数据查看变化：
 
-```mysql
+```sql
 mysql> INSERT INTO test_auto_increment2 VALUES (0), (0), (0), (0);
 Query OK, 4 rows affected (0.29 sec)
 Records: 4  Duplicates: 0  Warnings: 0
@@ -254,7 +254,7 @@ Leaf 是基于 MySQL 的分布式 ID 生成方案，但是不同于使用 MySQL 
 | update_time | timestamp    |         |
 
 具体业务实现以上图 `test_tag` 为例，比如 proxy-2 节点上没有 test_tag 的号段，然后需要从 DB 更新号段，更新号段就是把 test_tag 对应的 max_id 增加一个步长：
-```mysql
+```sql
 Begin
 UPDATE table SET max_id=max_id+step WHERE biz_tag=test_tag
 SELECT tag, max_id, step FROM table WHERE biz_tag=test_tag

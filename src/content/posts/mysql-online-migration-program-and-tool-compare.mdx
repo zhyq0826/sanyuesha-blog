@@ -20,7 +20,7 @@ group: "mysql"
 
 ## 不停机在线迁移
 
-很多团队面临的业务都无法停机，在线变更 schema 也确实是很多业务团队都会面临的问题，我曾经做过一次 [Mongodb 亿级拆分方案](/blog/mongodb-single-table-split)，大致思路是：
+很多团队面临的业务都无法停机，在线变更 schema 也确实是很多业务团队都会面临的问题，我曾经做过一次 [Mongodb 亿级拆分方案](/posts/mongodb-single-table-split)，大致思路是：
 1、在应用程序中拦截所有的 update，insert，delete 操作
 2、为数据一致性建立迁移缓冲区，临时保存迁移用户的所有业务数据
 3、在业务代码中利用迁移缓冲区做一致性输出
@@ -237,8 +237,7 @@ INFO      2017-10-20 13:59:07.839 Time holding locks: 1.183s
 
 > gh-ost 要求在集群模式下工作，操作复杂，等有空再更
 
-
-<!-- # gh-ost
+# gh-ost
 
 https://github.com/github/gh-ost
 
@@ -262,4 +261,4 @@ http://www.cnblogs.com/ivictor/p/5979731.html
 
 ## MySQL · 答疑解惑 · MySQL 的那些网络超时错误
 
-http://mysql.taobao.org/monthly/2017/05/04/ -->
+http://mysql.taobao.org/monthly/2017/05/04/

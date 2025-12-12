@@ -557,7 +557,7 @@ order 表索引同 **案例一**。
 
 ```
 
-关于 explain 语句的输出，详见 [mysql-explain](/blog/mysql-explain)，这里可以明显看到表 order 中的 ref 是 null，type 是 index，也就是是一个索引扫描，也就是说 **order 表可能使用了一个不合理的索引 `order_order_id_device_id` 从而造成了 order 需要进行全索引扫描，这是非常糟糕的索引选择类型，这有可能是造成查询慢的原因之一**。
+关于 explain 语句的输出，详见 [mysql-explain](/posts/mysql-explain)，这里可以明显看到表 order 中的 ref 是 null，type 是 index，也就是是一个索引扫描，也就是说 **order 表可能使用了一个不合理的索引 `order_order_id_device_id` 从而造成了 order 需要进行全索引扫描，这是非常糟糕的索引选择类型，这有可能是造成查询慢的原因之一**。
 
 表 order_base 用的 type 是 eq_ref，意味着 order_base 使用的是唯一性索引或者 primary key，从上不能看出是 primary key，性能较好。
 

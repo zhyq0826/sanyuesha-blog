@@ -65,7 +65,7 @@ Slice 支持使用切片操作，我们声明一个 months 的 array：
 months := [...]string{ 1: "January", 2: "February", 3: "Marcy", 4: "April", 5: "May", 6: "June", 7: "July", 8: "August", 9: "September", 10: "October", 11: "November", 12: "December"}
 ```
 
-切片操作 s[i:j]，0<=i<=j<=cap(s)，创建了一个新的 slice，其 length 是 j-i，容量是从 i 开始到底层数组末尾的所有元素，i 和 j 可以省略一个或都省略，因而 s[:]、s[:j]、s[i:] 都是合法的。省略 i 则表示从 0 开始，省略 j 则表示底层数组的末尾。
+切片操作 s[i:j]，`0 <= i <= j <= cap(s)`，创建了一个新的 slice，其 length 是 j-i，容量是从 i 开始到底层数组末尾的所有元素，i 和 j 可以省略一个或都省略，因而 s[:]、s[:j]、s[i:] 都是合法的。省略 i 则表示从 0 开始，省略 j 则表示底层数组的末尾。
 
 ![](https://static.git-star.com/WX20180801-082445@2x_meitu_1.jpg)
 

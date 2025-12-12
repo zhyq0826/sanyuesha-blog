@@ -89,5 +89,5 @@ group: "mongodb"
 需要注意的是，选用 redis 可能带来的问题是 redis 宕机会导致迁移中的数据无法恢复(redis 未开持久化操作或其他原因导致数据不能恢复)，只要用户在旧表中有数据存在，则用户删除数据的操作一定也要在旧表中执行，再次恢复迁移时，清除旧表数据，直接载入旧表中的数据到 *on_progress*。
 
 
-<img src="/images/table-split.png" alt="迁移流程图" width="800" >
+![迁移流程图](/images/table-split.png)
 

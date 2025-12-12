@@ -1,0 +1,34 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { getCollection } from "astro:content";
+import { formatDate } from "../../utils/date";
+
+const tools = (await getCollection("tools")).sort((a, b) => +b.data.date - +a.data.date);
+---
+
+<BaseLayout title="工具 | 三月沙" description="个人开发的工具下载与使用说明。">
+  <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));">
+    {tools.map((item) => (
+      <article class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <h2 style="margin:0;">{item.data.title}</h2>
+          <span class="pill">v{item.data.version}</span>
+        </div>
+        <p class="muted" style="margin:0.35rem 0 0.75rem;">{item.data.summary}</p>
+        <div class="muted" style="font-size:0.9rem;">{formatDate(item.data.date)}</div>
+        <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin:0.75rem 0;">
+          {item.data.download && <a href={item.data.download}>下载</a>}
+          {item.data.link && <a href={item.data.link}>说明</a>}
+        </div>
+        {item.data.changelog && (
+          <ul style="margin:0.25rem 0 0;padding-left:1.2rem;color:#4b5563;">
+            {item.data.changelog.map((line) => (
+              <li>{line}</li>
+            ))}
+          </ul>
+        )}
+      </article>
+    ))}
+  </div>
+</BaseLayout>
+

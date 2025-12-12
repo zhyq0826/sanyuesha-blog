@@ -73,7 +73,7 @@ db.records.find( { "location.city": "Albany", "location.state": "NY" } )
 ### sort on single index - 单索引的排序
 
 对于 single index 来说，由于 MongoDB index 本身支持顺序查找，所以对于single index 来说:
-```JavaScript
+```javascript
 db.records.find().sort( { score: 1 } )
 db.records.find().sort( { score: -1 } )
 db.records.find({score:{$lte:100}}).sort( { score: -1 } )
@@ -83,7 +83,7 @@ db.records.find({score:{$lte:100}}).sort( { score: -1 } )
 
 ## Compound index - 组合索引
 
-Mongodb 支持对多个 field 建立索引，称之为 compound index。Compound index 中 field 的顺序对索引的性能有至关重要的影响，比如索引 {userid:1, score:-1} 首先根据 userid 排序，然后再在每个 userid 中根据 score 排序。
+Mongodb 支持对多个 field 建立索引，称之为 compound index。Compound index 中 field 的顺序对索引的性能有至关重要的影响，比如索引 `{ userid: 1, score: -1 }` 首先根据 userid 排序，然后再在每个 userid 中根据 score 排序。
 
 ![](https://docs.mongodb.com/manual/_images/index-compound-key.bakedsvg.svg)
 
@@ -91,7 +91,7 @@ Mongodb 支持对多个 field 建立索引，称之为 compound index。Compound
 
 在此创建一个 products collection：
 
-```JavaScript
+```javascript
 {
  "_id": ObjectId(...),
  "item": "Banana",
@@ -103,33 +103,33 @@ Mongodb 支持对多个 field 建立索引，称之为 compound index。Compound
 ```
 
 然后创建一个 compound index：
-```JavaScript
+```javascript
 db.products.createIndex( { "item": 1, "stock": 1 } )
 ```
 
 这个 index 引用的 document 首先会根据 item 排序，然后在 每个 item 中，又会根据 stock 排序，以下语句都满足该索引：
-```JavaScript
+```javascript
 db.products.find( { item: "Banana" } )
 db.products.find( { item: "Banana", stock: { $gt: 5 } } )
 ```
 
-条件 {item: "Banana"} 满足是因为这个 query 满足 prefix 原则。
+条件 `{ item: "Banana" }` 满足是因为这个 query 满足 prefix 原则。
 
 ### 使用 compound index 需要满足 prefix 原则
 
 Index prefix 是指 index fields 的左前缀子集，考虑以下索引：
-```JavaScript
+```javascript
 { "item": 1, "location": 1, "stock": 1 }
 ```
 
 这个索引包含以下 index prefix：
-```JavaScript
+```javascript
 { item: 1 }
 { item: 1, location: 1 }
 ```
 
 所以只要语句满足 index prefix 原则都是可以支持使用 compound index ：
-```JavaScript
+```javascript
 db.products.find( { item: "Banana" } )
 db.products.find( { item: "Banana",location:"4th Street Store"} )
 db.products.find( { item: "Banana",location:"4th Street Store",stock:4})
@@ -140,62 +140,68 @@ db.products.find( { item: "Banana",location:"4th Street Store",stock:4})
 - the **stock** field
 - the **location** and **stock** fields
 
-由于 index prefix 的存在，如果一个 collection 既有 **{a:1, b:1}** 索引 ，也有 **{a:1}** 索引，如果二者没有稀疏或者唯一性的要求，single index 可以移除。
+由于 index prefix 的存在，如果一个 collection 既有 `{ a: 1, b: 1 }` 索引，也有 `{ a: 1 }` 索引，如果二者没有稀疏或者唯一性的要求，single index 可以移除。
 
 ### Sort on Compound index - 复合索引的排序
 
 前文说过 single index 的 sort 顺序无关紧要，但是 compound index 则完全不同，考虑有如下场景：
-```JavaScript
+```javascript
 db.events.find().sort( { username: 1, date: -1 } )
 ```
 上面的查询首先根据 username 进行 ascending 排序，然后再对结果进行 date descending 。
 
 下面的查询：
-```JavaScript
+```javascript
 db.events.find().sort( { username: -1, date: 1 } )
 ```
 则是首先根据 username 进行 descending 排序，然后再对 date 进行 ascending 排序。
 
 如果想要索引满足以上两种查询和排序，索引类型需要满足如下条件：
-```JavaScript
+```javascript
 db.events.createIndex( { "username" : 1, "date" : -1 } ）
 ```
 也就是 **username 和 date 的顺序不同**，如果顺序相同则没有办法满足以上查询，比如：
-```JavaScript
+```javascript
 db.events.find().sort( { username: 1, date: 1 })
 ```
 
-也就是说 sort 的顺序必须要和创建索引的顺序是一致的，一致的意思是不一定非要一样，总结起来大致如下：
+也就是说 sort 的顺序必须要和创建索引的顺序一致（或完全反向），总结如下：
 
+```
 |                                    | { "username" : 1, "date" : -1 } | { "username" : 1, "date" : 1 } |
 | ---------------------------------- | ------------------------------- | ------------------------------ |
 | sort( { username: 1, date: -1 } )  | 支持                            | 不支持                         |
 | sort( { username: -1, date: 1 } )  | 支持                            | 不支持                         |
 | sort( { username: 1, date: 1 } )   | 不支持                          | 支持                           |
 | sort( { username: -1, date: -1 } ) | 不支持                          | 支持                           |
+```
 
 **即排序的顺序必须要和索引一致，逆序之后一致也可以**，下表清晰的列出了 compound index 满足的 query 语句：
 
-| query                                                    | index                |
-| -------------------------------------------------------- | -------------------- |
-| db.data.find().sort( { a: 1 } )                          | { a: 1 }             |
-| db.data.find().sort( { a: -1 } )                         | { a: 1 }             |
-| db.data.find().sort( { a: 1, b: 1 } )                    | { a: 1, b: 1 }       |
-| db.data.find().sort( { a: -1, b: -1 } )                  | { a: 1, b: 1 }       |
-| db.data.find().sort( { a: 1, b: 1, c: 1 } )              | { a: 1, b: 1, c: 1 } |
-| db.data.find( { a: { $gt: 4 } } ).sort( { a: 1, b: 1 } ) | { a: 1, b: 1 }       |
+```
+| query                                                    | index                 |
+| -------------------------------------------------------- | --------------------- |
+| db.data.find().sort( { a: 1 } )                          | { a: 1 }              |
+| db.data.find().sort( { a: -1 } )                         | { a: 1 }              |
+| db.data.find().sort( { a: 1, b: 1 } )                    | { a: 1, b: 1 }        |
+| db.data.find().sort( { a: -1, b: -1 } )                  | { a: 1, b: 1 }        |
+| db.data.find().sort( { a: 1, b: 1, c: 1 } )              | { a: 1, b: 1, c: 1 }  |
+| db.data.find( { a: { $gt: 4 } } ).sort( { a: 1, b: 1 } ) | { a: 1, b: 1 }        |
+```
 
 **即排序的 filed 也要满足 index prefix 原则**。
 
 #### 非 index prefix 的排序
 
-考虑索引 { a: 1, b: 1, c: 1, d: 1 }，即使排序的 field 不满足 index prefix 也是可以的，但前提条件是**排序 field 之前的 index field 必须是等值条件**，
+考虑索引 `{ a: 1, b: 1, c: 1, d: 1 }`，即使排序的 field 不满足 index prefix 也是可以的，但前提条件是**排序 field 之前的 index field 必须是等值条件**，
 
+```
 |      | Example                                                 | Index Prefix          |
 | ---- | ------------------------------------------------------- | --------------------- |
 | r1   | db.data.find( { a: 5 } ).sort( { b: 1, c: 1 } )         | { a: 1 , b: 1, c: 1 } |
 | r2   | db.data.find( { b: 3, a: 4 } ).sort( { c: 1 } )         | { a: 1, b: 1, c: 1 }  |
 | r3   | db.data.find( { a: 5, b: { $lt: 3} } ).sort( { b: 1 } ) | { a: 1, b: 1 }        |
+```
 
 上面表格 r1 的排序 field 是 b 和 c，a 是 index field 而且在 b 和 c 之前，可以使用索引；r3 的排序中 b 是范围查询，但是 b 之前的 a 用的也是等值条件，也就是只要排序 field 之前的 field 满足等值条件即可，其它的 field 可以任意条件。
 
@@ -211,16 +217,18 @@ MongoDB 默认提供了类似 MySQL explain 的语句来分析查询语句的来
 
 索引的真正作用是帮助我们限制数据的选择范围，比如 Compound index 多个 feild 的顺序如何决定，应该首选可以最大化的缩小数据查找范围的 field，这样如果第一个 field 可以迅速缩小数据的查找范围，那么后续的 feild 匹配的行就会变少很多。考虑语句：
 
-```JavaScript
+```javascript
 {'online_time': {'$lte': present}, 'offline_time': {'$gt': present}, 'online': 1, 'orientation': 'quality', 'id': {'$gt': max_id}}
 ```
 
 考虑如下索引
 
+```
 |      | 索引                                                         | nscanded |
 | ---- | ------------------------------------------------------------ | -------- |
 | r1   | {start_time:1, end_time: 1, origin: 1, id: 1, orientation: 1} | 12959    |
 | r2   | {start_time:1, end_time: 1, origin: 1, orientation: 1, id: 1} | 2700     |
+```
 
 由于 field `id` 和 `orientation` 的顺序不同会导致需要扫描的 documents 数量差异巨大，说明二者对对数据的限制范围差别很大，优先考虑能够最大化限制数据范围的索引顺序。
 

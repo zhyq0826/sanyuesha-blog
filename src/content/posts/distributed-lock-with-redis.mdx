@@ -88,7 +88,7 @@ pipe.watch(lock)
 
 ## 一个简单的 python 实现
 
-{% gist 5e474f42c8167ab32a6627ddd837fc83 redis_lock.py %}
+可以参考这份 Gist 示例代码：[redis_lock.py](https://gist.github.com/zhyq0826/5e474f42c8167ab32a6627ddd837fc83#file-redis_lock-py)
 
 
 在上面这个实现中，如果锁释放(release_lock)失败，客户端可以尝试对当前的操作进行回滚或自定义处理方式。

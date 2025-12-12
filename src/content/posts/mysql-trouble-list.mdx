@@ -26,7 +26,7 @@ group: "mysql"
 
 1. 查看所有慢查询语句占用的线程，找到然后 kill 掉
 
-```mysql
+```sql
 select id,';' from `information_schema`.PROCESSLIST where info like '%table_name%';
 ```
 
@@ -62,11 +62,11 @@ select id,';' from `information_schema`.PROCESSLIST where info like '%table_name
 
 在线变更表结构导致使用该表的业务假死 
 
-```mysql
+```sql
 alter table add colum1 string not null default '';
 ```
 
 ### 解决方案
 
 - 如果数据量比较小（百万以下），数据变更不频繁，可以直接变更
-- 大表可以考虑采用成熟的开源解决方案，详见[mysql 在线 scheme 变更方案以及](/blog/mysql-online-migration-program-and-tool-compare)
+- 大表可以考虑采用成熟的开源解决方案，详见[mysql 在线 scheme 变更方案以及](/posts/mysql-online-migration-program-and-tool-compare)

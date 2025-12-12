@@ -74,7 +74,7 @@ func main() {
 
 ## Unbuffered channel
 
-Channel 可以设置容量，表示 channel 允许接收的消息个数，默认的 channel 容量是 0 称为 **unbuffered channel** ，对 unbuffered channel 执行 **读** 操作 value := <-ch 会一直阻塞直到有数据可接收，执行 **写** 操作 ch <- value 也会一直阻塞直到有 goroutine 对 channel 开始执行接收，正因为如此在同一个 goroutine 中使用 unbuffered channel 会造成 deadlock。
+Channel 可以设置容量，表示 channel 允许接收的消息个数，默认的 channel 容量是 0 称为 **unbuffered channel** ，对 unbuffered channel 执行 **读** 操作 `value := <-ch` 会一直阻塞直到有数据可接收，执行 **写** 操作 `ch <- value` 也会一直阻塞直到有 goroutine 对 channel 开始执行接收，正因为如此在同一个 goroutine 中使用 unbuffered channel 会造成 deadlock。
 
 
 ```go

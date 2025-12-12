@@ -1,0 +1,23 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import PostMeta from "../../components/PostMeta.astro";
+import { getCollection } from "astro:content";
+
+const insights = (await getCollection("insights")).sort((a, b) => +b.data.date - +a.data.date);
+---
+
+<BaseLayout title="前沿资讯 | 三月沙" description="精选前沿资讯，附带个人思考与链接。">
+  <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));">
+    {insights.map((item) => (
+      <article class="card">
+        <a href={`/blog/${item.slug}`} style="display:block;margin-bottom:0.5rem;font-weight:700;">{item.data.title}</a>
+        <p class="muted" style="margin:0 0 0.75rem;">{item.data.summary}</p>
+        {item.data.source && (
+          <a href={item.data.source} class="muted" style="font-size:0.9rem;">来源链接</a>
+        )}
+        <PostMeta date={item.data.date} tags={item.data.tags} group={item.data.group} />
+      </article>
+    ))}
+  </div>
+</BaseLayout>
+

@@ -23,7 +23,7 @@ group: "golang"
 
 
 阅读 `http.Client` 发送请求的源码梳理流程，整个 http 请求的读取都是通过实现了 http 协议的 Transport 来实现，Transport 又利用 persistConn 封装了普通的 connection 来达到连接服用的目的，也就是满足 http 中 keep-alive 的需求，一旦一个 `http client` 需要 `keep-alive` 那么这个 connection 就不会断开，重复利用，而 `readLoop` 的逻辑就是一个 for 循环里面几个小的 select，for 循环退出的条件就是 `alive` 变成 `false`：
-```golang
+```go
 
 select {
 case rc.ch <- responseAndError{res: resp}:
@@ -62,7 +62,7 @@ case <-pc.closech:
 - 当前的 persistConn 关闭
 
 所以上述几个条件不满足，goroutine 将一直存在，也就是如果一个 http request 的 body 没有被用到，那么这个 goroutine 也不会被关闭。查看官方文档：
-```golang
+```go
 // The client must close the response body when finished with it:
 
 resp, err := http.Get("http://example.com/")
@@ -82,7 +82,7 @@ body, err := ioutil.ReadAll(resp.Body)
 
 如果之前写过 Python，会觉得关闭 http response body 真的是多此一举，这和整个 Go 实现 http 请求的机制有关系，因为 Go 是通过 goroutine 实现 http 的请求的，一个 http request 可能是由多个 goroutine 组成，而 goroutine 没有办法通过其他机制杀死，只能等待 goroutine 主动退出，所以必须要有机制去通知 goroutine 告诉它们工作结束了可以退出了，一旦这个机制遭到破坏，那么 goroutine 就不会释放。因为上面的 body 没有被使用，没有主动关闭 body，而且请求也没有主动关闭，导致底层的 tcp 连接可能早就断开了，但是上层的持有连接的 goroutine 依然没有释放，除了主动关闭 body 之外，还可以在调用结束之后关闭 request：
 
-```golang
+```go
 request, err := http.NewRequest("GET", url, bytes.NewReader([]byte("")))
 ctx, cancelFunc := context.WithCancel(context.Background())
 request = request.WithContext(ctx)

@@ -16,7 +16,7 @@ group: "golang"
 
 **聚集全局变量 Grouped globals**
 
-```golang
+```go
 var config struct {
     APIKey      string
     OAuthConfig oauth.Config
@@ -27,7 +27,7 @@ config.APIKey = "BADC0C0A"
 
 **模板数据 Template data**
 
-```golang
+```go
 data := struct {
     Title string
     Users []*User
@@ -42,7 +42,7 @@ err := tmpl.Execute(w, data)
 
 **组织测试数据 Test tables**
 
-```golang
+```go
 var indexRuneTests = []struct {
     s    string
     rune rune
@@ -58,7 +58,7 @@ var indexRuneTests = []struct {
 
 **嵌入式 lock Embeded lock**
 
-```golang
+```go
 var hits struct {
     sync.Mutex
     n int
@@ -76,7 +76,7 @@ hits.Unlock()
 嵌套 JSON 解析 Decoding deeply nested JSON data 
 
 
-```golang
+```go
 {"data": {"children": [
   {"data": {
     "title": "The Go homepage",
@@ -115,7 +115,7 @@ type Response struct {
 
 ## 4. mock 文件系统
 
-```golang
+```go
 
 var fs fileSystem = osFS{}
 
@@ -143,7 +143,7 @@ func (osFS) Stat(name string) (os.FileInfo, error) { return os.Stat(name) }
 
 ## 5. 方法表达式
 
-```golang
+```go
 type T struct {}
 func (T) Foo(s string) { println(s) }
 
@@ -151,7 +151,7 @@ var fn func(T, string) = T.Foo
 ```
 
 
-```golang
+```go
 func (c *Cmd) stdin() (f *os.File, err error)
 func (c *Cmd) stdout() (f *os.File, err error)
 func (c *Cmd) stderr() (f *os.File, err error)
@@ -171,7 +171,7 @@ for _, setupFd := range []F{(*Cmd).stdin, (*Cmd).stdout, (*Cmd).stderr} {
 ## 6. 同一个 channel 发送和接受
 
 
-```golang
+```go
 
 package main
 
@@ -201,7 +201,7 @@ func main() {
 ## 7. 使用 close channel 完成广播
 
 
-```golang
+```go
 func waiter(i int, block, done chan struct{}) {
     time.Sleep(time.Duration(rand.Intn(3000)) * time.Millisecond)
     fmt.Println(i, "waiting...")
@@ -225,7 +225,7 @@ func main() {
 ```
 
 
-```golang
+```go
 
 func worker(i int, ch chan Work, quit chan struct{}) {
     var quitting bool
@@ -257,7 +257,7 @@ func main() {
 
 ## 8. select 中的 nil
 
-```golang
+```go
 
 func worker(i int, ch chan Work, quit chan struct{}) {
     for {

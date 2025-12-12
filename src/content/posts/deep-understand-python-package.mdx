@@ -78,7 +78,7 @@ from package import item
 
 ```
 
-import 语句首先检查 `item` 是否是 `__init__.py` 中定义的变量，然后检查其是不是一个 subpackage，如果不是再去检查其是不是一个 module，都不是将抛出 `ImportError`。
+对于 `import` 语句，解析顺序是：先检查 `item` 是否是 `__init__.py` 中定义的变量，然后检查其是不是一个 subpackage，如果不是再去检查其是不是一个 module，都不是将抛出 `ImportError`。
 
 
 在 `import item.subitem.subsubitem` 语句时，除了最后一个 subsubitem 之外其他 item 都必须是 package，而最后一个 subsubitem 必须是一个 package 或者 module，不能是他前一个 item 定义的 function、class、variable。

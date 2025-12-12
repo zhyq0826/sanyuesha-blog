@@ -13,7 +13,7 @@ group: "Go 读书笔记"
 
 Go 中的 interface 是一种类型，更准确的说是一种抽象类型 abstract type，一个 interface 就是包含了一系列行为的 method 集合，interface 的定义很简单：
 
-```Go
+```go
 package io
 
 type Writer interface {
@@ -30,7 +30,7 @@ Go 中的 interface 不同于其它语言，它是隐式的 implicitly，这意�
 
 {/* more */}
 
-```Go
+```go
 package fmt
 
 func Fprintf(w io.Writer, format string, args ...interface{}) (int, error)
@@ -59,7 +59,7 @@ func Sprintf(format string, args ...interface{}) string {
 
 看个例子：
 
-```Go
+```go
 package main
 
 import (

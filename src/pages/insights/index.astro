@@ -1,23 +1,43 @@
 ---
-import BaseLayout from "../../layouts/BaseLayout.astro";
-import PostMeta from "../../components/PostMeta.astro";
+import Layout from "~/layouts/Layout.astro";
 import { getCollection } from "astro:content";
+import { dateString } from "~/utils";
 
-const insights = (await getCollection("insights")).sort((a, b) => +b.data.date - +a.data.date);
+const insights = (
+  await getCollection("insights", ({ data }) =>
+    import.meta.env.PROD ? data.draft !== true : true
+  )
+).sort((a, b) => (a.data.date < b.data.date ? 1 : -1));
 ---
 
-<BaseLayout title="前沿资讯 | 三月沙" description="精选前沿资讯，附带个人思考与链接。">
-  <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));">
+<Layout title="Insights" description="灵感、观察与短文笔记">
+  <section class="space-y-5">
+    <h1 class="text-3xl font-semibold text-heading1">Insights</h1>
     {insights.map((item) => (
-      <article class="card">
-        <a href={`/blog/${item.slug}`} style="display:block;margin-bottom:0.5rem;font-weight:700;">{item.data.title}</a>
-        <p class="muted" style="margin:0 0 0.75rem;">{item.data.summary}</p>
-        {item.data.source && (
-          <a href={item.data.source} class="muted" style="font-size:0.9rem;">来源链接</a>
-        )}
-        <PostMeta date={item.data.date} tags={item.data.tags} group={item.data.group} />
+      <article class="border border-foreground/12 rounded-xl p-5 bg-foreground/2 hover:border-accent/30 transition-colors">
+        <div class="text-sm text-foreground/80">{dateString(item.data.date)}</div>
+        <h2 class="text-2xl font-semibold mt-2">
+          <a href={`/insights/${item.slug}`}># {item.data.title}</a>
+        </h2>
+        <p class="mt-3 text-foreground/80">
+          {item.data.description ?? item.data.summary}
+        </p>
+        {item.data.tags?.length ? (
+          <div class="flex flex-wrap gap-2 mt-3">
+            {item.data.tags.map((tag) => (
+              <span class="rounded-full px-3 py-1 text-sm border border-foreground/16 bg-foreground/3">
+                #{tag}
+              </span>
+            ))}
+          </div>
+        ) : null}
       </article>
     ))}
-  </div>
-</BaseLayout>
+    {insights.length === 0 && (
+      <div class="border border-foreground/12 rounded-xl p-5 text-foreground/70">
+        暂无内容，稍后再来看看。
+      </div>
+    )}
+  </section>
+</Layout>
 

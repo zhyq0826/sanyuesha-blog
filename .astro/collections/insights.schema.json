@@ -10,6 +10,9 @@
         "summary": {
           "type": "string"
         },
+        "description": {
+          "type": "string"
+        },
         "date": {
           "anyOf": [
             {
@@ -39,7 +42,27 @@
         "cover": {
           "type": "string"
         },
+        "coverImage": {
+          "type": "object",
+          "properties": {
+            "src": {
+              "type": "string"
+            },
+            "alt": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "src",
+            "alt"
+          ],
+          "additionalProperties": false
+        },
         "featured": {
+          "type": "boolean",
+          "default": false
+        },
+        "draft": {
           "type": "boolean",
           "default": false
         },

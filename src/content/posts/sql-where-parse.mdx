@@ -30,7 +30,7 @@ group: "mysql"
 
 有了这些基本知识之后，接下来让我们创建一张测试表，为表新增几个索引，然后插入几条记录，最后看看表的完整数据组织、存储结构式怎么样的。(注意：下面的实例，使用的表的结构为堆表形式，这也是Oracle/DB2/PostgreSQL等数据库采用的表组织形式，而不是InnoDB引擎所采用的聚簇索引表。其实，表结构采用何种形式并不重要，最重要的是理解下面章节的核心，在任何表结构中均适用) 
 
-```mysql
+```sql
 create table t1 (a int primary key, b int, c int, d int, e varchar(20));
 
 create index idx_t1_bcd on t1(b, c, d); 
@@ -66,7 +66,7 @@ t1表的存储结构如下图所示(只画出了idx_t1_bcd索引与t1表结构�
 
 在有了以上的t1表之后，接下来就可以在此表上进行SQL查询了，获取自己想要的数据。例如，考虑以下的一条SQL：
 
-```mysql
+```sql
 select * from t1 where b >= 2 and b < 8 and c > 1 and d != 4 and e != ‘a’; 
 ```
 
@@ -104,21 +104,21 @@ select * from t1 where b >= 2 and b < 8 and c > 1 and d != 4 and e != ‘a’;
 
 用于确定索引查询的起始范围。提取规则：从索引的第一个键值开始，检查其在where条件中是否存在，若存在并且条件是=、>=，则将对应的条件加入Index First Key之中，继续读取索引的下一个键值，使用同样的提取规则；若存在并且条件是>，则将对应的条件加入Index First Key中，同时终止Index First Key的提取；若不存在，同样终止Index First Key的提取。
 
-针对上面的SQL，应用这个提取规则，提取出来的Index First Key为(b >= 2, c > 1)。由于c的条件为 >，提取结束，不包括d。
+针对上面的SQL，应用这个提取规则，提取出来的 Index First Key 为 `(b >= 2, c > 1)`。由于 c 的条件为 `>`，提取结束，不包括 d。
 
 ### Index Last Key 
 
-Index Last Key的功能与Index First Key正好相反，用于确定索引查询的终止范围。提取规则：从索引的第一个键值开始，检查其在where条件中是否存在，若存在并且条件是=、<=，则将对应条件加入到Index Last Key中，继续提取索引的下一个键值，使用同样的提取规则；若存在并且条件是 < ，则将条件加入到Index Last Key中，同时终止提取；若不存在，同样终止Index Last Key的提取。
+Index Last Key 的功能与 Index First Key 正好相反，用于确定索引查询的终止范围。提取规则：从索引的第一个键值开始，检查其在 where 条件中是否存在，若存在并且条件是 `=`、`<=`，则将对应条件加入到 Index Last Key 中，继续提取索引的下一个键值，使用同样的提取规则；若存在并且条件是 `<`，则将条件加入到 Index Last Key 中，同时终止提取；若不存在，同样终止 Index Last Key 的提取。
 
-针对上面的SQL，应用这个提取规则，提取出来的Index Last Key为(b < 8)，由于是 < 符号，因此提取b之后结束。
+针对上面的SQL，应用这个提取规则，提取出来的 Index Last Key 为 `(b < 8)`，由于是 `<` 符号，因此提取 b 之后结束。
 
 ### Index Filter
 
-在完成Index Key的提取之后，我们根据where条件固定了索引的查询范围，但是此范围中的项，并不都是满足查询条件的项。在上面的SQL用例中，(3,1,1)，(6,4,4)均属于范围中，但是又均不满足SQL的查询条件。
+在完成 Index Key 的提取之后，我们根据 where 条件固定了索引的查询范围，但是此范围中的项，并不都是满足查询条件的项。在上面的 SQL 用例中，`(3,1,1)`、`(6,4,4)` 均属于范围中，但是又均不满足 SQL 的查询条件。
 
-Index Filter的提取规则：同样从索引列的第一列开始，检查其在where条件中是否存在：若存在并且where条件仅为 =，则跳过第一列继续检查索引下一列，下一索引列采取与索引第一列同样的提取规则；若where条件为 >=、>、<、<= 其中的几种，则跳过索引第一列，将其余where条件中索引相关列全部加入到Index Filter之中；若索引第一列的where条件包含 =、>=、>、<、<= 之外的条件，则将此条件以及其余where条件中索引相关列全部加入到Index Filter之中；若第一列不包含查询条件，则将所有索引相关条件均加入到Index Filter之中。
+Index Filter 的提取规则：同样从索引列的第一列开始，检查其在 where 条件中是否存在：若存在并且 where 条件仅为 `=`，则跳过第一列继续检查索引下一列，下一索引列采取与索引第一列同样的提取规则；若 where 条件为 `>=`、`>`、`<`、`<=` 其中的几种，则跳过索引第一列，将其余 where 条件中索引相关列全部加入到 Index Filter 之中；若索引第一列的 where 条件包含 `=`、`>=`、`>`、`<`、`<=` 之外的条件，则将此条件以及其余 where 条件中索引相关列全部加入到 Index Filter 之中；若第一列不包含查询条件，则将所有索引相关条件均加入到 Index Filter 之中。
 
-针对上面的用例SQL，索引第一列只包含 >=、< 两个条件，因此第一列可跳过，将余下的c、d两列加入到Index Filter中。因此获得的Index Filter为 c > 1 and d != 4 。
+针对上面的用例 SQL，索引第一列只包含 `>=`、`<` 两个条件，因此第一列可跳过，将余下的 c、d 两列加入到 Index Filter 中。因此获得的 Index Filter 为 `c > 1 and d != 4`。
 
 ### Table Filter
 

@@ -19,7 +19,7 @@ group: "Go 读书笔记"
 由于 Go 是静态类型的语言，type 是在编译阶段已经定义好的，而 interface 存储的值是动态的，在上面这个概念模型中，type 部分更准确叫法是 type descriptors，主要是提供 concrete type 的相关信息，包括 method、name 等。
 
 下面这几个语句：
-```Go
+```go
 var w io.Writer
 w = os.Stdout
 w = new(bytes.Buffer)
@@ -38,7 +38,7 @@ w:
 
 ```
 interface value 是否是 nil 取决于其 dynamic type，在 nil 的 interface value 上调用会 panic
-```Go
+```go
 w.Write([]byte("hello")) // panic
 ```
 
@@ -51,12 +51,12 @@ w:
 ```
 
 在 interface value w 上调用 `Write` method 实际上调用的是 `*os.File` 类型的 Write 方法，于是输出 "hello"。
-```Go
+```go
 w.Write([]byte("hello")) // "hello"
 ```
 
 由于在编译阶段，我们并不知道一个 interface value 的 dynamic type 是什么，所以 interface value 的调用必须进行 dynamic dispatch。为了能调用 dynamic value 的 Write method，compiler 必须生成相关代码以便在执行的时候通过 dynamic type 获取对应 method 的真实地址的 copy，在调用的形式上好像是我们直接调用了 dynamic value 的 Write method。
-```Go
+```go
 os.Stdout.Write([]byte("hello")) // "hello"
 ```
 
@@ -70,7 +70,7 @@ os.Stdout.Write([]byte("hello")) // "hello"
 Interface value 可以使用 `==` 和 `!=` 语句进行比较的。如果两个 interface value 的 dynamic type 相同，dynamic value 根据 dynamic type 的 `==` 比较操作是相等的，那么这两个 interface value 是相等的。因而 interface value 可以用在 map 中作为key 或者 switch 语句中。
 
 虽然 interface value 本身是可以比较的，但是如果 dynamic type 不支持 compare 操作，那么对两个 dynamic type 相同的 interface value 比较将 panic，比如 slice。
-```Go
+```go
 var x interface{} = []int{1, 2, 3}
 fmt.Println(x == x) // panic: comparing uncomparable type []int
 ```
@@ -80,7 +80,7 @@ fmt.Println(x == x) // panic: comparing uncomparable type []int
 # 格式化输出 interface value
 
 Go 提供了格式化输出 interface value 的方法，方便在开发和调试中使用。
-```Go
+```go
 var w io.Writer
 fmt.Printf("%T\n", w) // "<nil>"
 
@@ -94,7 +94,7 @@ fmt.Printf("%T\n", w) // "*bytes.Buffer"
 # 警告：dynamic value 是 nil 的 interface value 并不是 nil
 
 Interface value 是 nil 和 interface value 包含的 dynamic value 是 nil 并不是一回事，**后者不是 nil**，这个潜在的区别给初学 Go 的 developer 造成了一定的困扰。
-```Go
+```go
 const debug = false
 
 func main() {

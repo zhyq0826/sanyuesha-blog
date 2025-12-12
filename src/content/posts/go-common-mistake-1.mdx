@@ -10,7 +10,7 @@ group: "golang"
 
 在 Go 常见的错误一文中 http://devs.cloudimmunity.com/gotchas-and-common-mistakes-in-go-golang/ 有这么一段代码：
 
-```Go
+```go
 
 package main
 
@@ -44,7 +44,7 @@ func main() {
 
 把 field slice 的类型改为 pointer 结果又不同：
 
-```Go
+```go
 
 package main
 
@@ -79,7 +79,7 @@ func main() {
 我对上面的代码 for 循环中的部分进行了一下改造，改造之后对应的代码分别是：
 
 slice 是非指针
-```Go
+```go
     data := []field{{"one"},{"two"},{"three"}}
 
     for _,v := range data {
@@ -89,7 +89,7 @@ slice 是非指针
 ```
 
  slice 是指针
-```Go
+```go
     data := []*field{{"one"},{"two"},{"three"}}
 
     for _,v := range data {
@@ -109,7 +109,7 @@ slice 是非指针
 
 有人说 one、two、three 的随机输出是因为 CPU 是多核的原因导致的，如果改成单核就是顺序输出，这样的说法并不是特别准确。理论上来讲 goroutine 的调度是有一定的随机性的，也就是即使是单核输出也有可能是随机的，只是在运行如此简单的例子时一般机器环境都不会导致这 3 个简单的 goroutine 出现交叉执行。比如可以在 print 输出之前模拟 io 繁忙的来达到即使是单核也可能是随机输出的目的。
 
-```Go
+```go
     if rand.Intn(100) > 20 {
         time.Sleep(1 * time.Second)
     }

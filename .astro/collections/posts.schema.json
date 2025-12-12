@@ -10,7 +10,26 @@
         "summary": {
           "type": "string"
         },
+        "description": {
+          "type": "string"
+        },
         "date": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time"
+            },
+            {
+              "type": "string",
+              "format": "date"
+            },
+            {
+              "type": "integer",
+              "format": "unix-time"
+            }
+          ]
+        },
+        "published": {
           "anyOf": [
             {
               "type": "string",
@@ -36,12 +55,42 @@
         "group": {
           "type": "string"
         },
+        "series": {
+          "type": "string"
+        },
+        "author": {
+          "type": "string"
+        },
         "cover": {
           "type": "string"
+        },
+        "coverImage": {
+          "type": "object",
+          "properties": {
+            "src": {
+              "type": "string"
+            },
+            "alt": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "src",
+            "alt"
+          ],
+          "additionalProperties": false
         },
         "featured": {
           "type": "boolean",
           "default": false
+        },
+        "draft": {
+          "type": "boolean",
+          "default": false
+        },
+        "toc": {
+          "type": "boolean",
+          "default": true
         },
         "$schema": {
           "type": "string"

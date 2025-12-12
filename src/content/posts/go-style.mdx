@@ -23,7 +23,7 @@ group: "golang"
 注释以要注释的对象开头，尽量使用完整的句子进行注释，哪怕看上去有点冗余，
 
 
-```golang
+```go
 // Request represents a request to run a command.
 type Request struct { ...
 
@@ -37,7 +37,7 @@ func Encode(w io.Writer, req *Request) { ...
 
 对于来自 RPC 或 HTTP 调用的请求，显示把 context 作为函数的第一个参数。
 
-```golang
+```go
 func F(ctx context.Context, /* other arguments */) {}
 ```
 
@@ -115,7 +115,7 @@ Try to keep concurrent code simple enough that goroutine lifetimes are obvious. 
 ## 错误的缩进 Indent Error Flow
 
 
-```golang
+```go
 
 // 推荐写法
 if err != nil {
@@ -154,7 +154,7 @@ if err != nil {
 
 
 如果一个函数返回多个类型相同的结果或者返回的结果上下文语义不明确，可以使用命名参数：
-```golang
+```go
 
 // 不推荐写法
 func (f *Foo) Location() (float64, float64, error)

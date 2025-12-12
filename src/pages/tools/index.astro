@@ -1,34 +1,66 @@
 ---
-import BaseLayout from "../../layouts/BaseLayout.astro";
+import Layout from "~/layouts/Layout.astro";
 import { getCollection } from "astro:content";
-import { formatDate } from "../../utils/date";
+import { dateString } from "~/utils";
 
-const tools = (await getCollection("tools")).sort((a, b) => +b.data.date - +a.data.date);
+const tools = (
+  await getCollection("tools", ({ data }) =>
+    import.meta.env.PROD ? data.draft !== true : true
+  )
+).sort((a, b) => (a.data.date < b.data.date ? 1 : -1));
 ---
 
-<BaseLayout title="工具 | 三月沙" description="个人开发的工具下载与使用说明。">
-  <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));">
+<Layout title="Tools" description="自用与分享的小工具">
+  <section class="space-y-5">
+    <h1 class="text-3xl font-semibold text-heading1">Tools</h1>
     {tools.map((item) => (
-      <article class="card">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <h2 style="margin:0;">{item.data.title}</h2>
-          <span class="pill">v{item.data.version}</span>
+      <article class="border border-foreground/12 rounded-xl p-5 bg-foreground/2 hover:border-accent/30 transition-colors">
+        <div class="text-sm text-foreground/80 flex flex-wrap gap-2 items-center">
+          <time>{dateString(item.data.date)}</time>
+          <span class="rounded-full px-3 py-1 border border-foreground/16 bg-foreground/3 text-xs">
+            v{item.data.version}
+          </span>
         </div>
-        <p class="muted" style="margin:0.35rem 0 0.75rem;">{item.data.summary}</p>
-        <div class="muted" style="font-size:0.9rem;">{formatDate(item.data.date)}</div>
-        <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin:0.75rem 0;">
-          {item.data.download && <a href={item.data.download}>下载</a>}
-          {item.data.link && <a href={item.data.link}>说明</a>}
-        </div>
-        {item.data.changelog && (
-          <ul style="margin:0.25rem 0 0;padding-left:1.2rem;color:#4b5563;">
-            {item.data.changelog.map((line) => (
-              <li>{line}</li>
+        <h2 class="text-2xl font-semibold mt-2"># {item.data.title}</h2>
+        <p class="mt-3 text-foreground/80">{item.data.summary}</p>
+        {item.data.tags?.length ? (
+          <div class="flex flex-wrap gap-2 mt-3">
+            {item.data.tags.map((tag) => (
+              <span class="rounded-full px-3 py-1 text-sm border border-foreground/16 bg-foreground/3">
+                #{tag}
+              </span>
             ))}
-          </ul>
-        )}
+          </div>
+        ) : null}
+        {item.data.changelog?.length ? (
+          <div class="mt-3 text-sm text-foreground/80">
+            <div class="font-semibold mb-1">Changelog</div>
+            <ul class="list-disc pl-5 space-y-1">
+              {item.data.changelog.map((line) => (
+                <li>{line}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+        <div class="flex flex-wrap gap-3 mt-4 text-sm">
+          {item.data.link && (
+            <a class="button" href={item.data.link} target="_blank" rel="noreferrer">
+              Demo
+            </a>
+          )}
+          {item.data.download && (
+            <a class="button" href={item.data.download} target="_blank" rel="noreferrer">
+              Download
+            </a>
+          )}
+        </div>
       </article>
     ))}
-  </div>
-</BaseLayout>
+    {tools.length === 0 && (
+      <div class="border border-foreground/12 rounded-xl p-5 text-foreground/70">
+        暂无工具。
+      </div>
+    )}
+  </section>
+</Layout>
 

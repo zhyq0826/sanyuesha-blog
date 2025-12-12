@@ -95,7 +95,7 @@ Promise 作为一种规范，nodejs 中有多种第三方库都做了实现，�
 
 事件是 nodejs 中常用的编程模型，熟悉 JavaScript 的同学应该很了解了，不细表。
 
-```JavaScript
+```javascript
 app.post('/a/message/updates', function(req, res){
     var p = new Promise(function(resolve, reject){
         messageBuffer.messageEmitter.on("newMessage", function(data){  #1
